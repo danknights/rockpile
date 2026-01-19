@@ -1,13 +1,32 @@
 'use client'
 
 import { useState } from 'react'
-import { 
-  Menu, X, Settings, User, Download, WifiOff, LogOut, 
-  Moon, Sun, HelpCircle, MessageSquare, Shield, Database
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Switch } from '@/components/ui/switch'
+import {
+  IonContent,
+  IonHeader,
+  IonToolbar,
+  IonTitle,
+  IonList,
+  IonItem,
+  IonLabel,
+  IonIcon,
+  IonToggle,
+  IonAvatar,
+  IonNote,
+  IonMenuToggle,
+} from '@ionic/react'
+import {
+  personOutline,
+  settingsOutline,
+  downloadOutline,
+  moonOutline,
+  sunnyOutline,
+  serverOutline,
+  shieldOutline,
+  helpCircleOutline,
+  chatbubbleOutline,
+  logOutOutline,
+} from 'ionicons/icons'
 import { mockUser } from '@/lib/mock-data'
 
 interface HamburgerMenuProps {
@@ -18,139 +37,123 @@ interface HamburgerMenuProps {
   onOpenOffline: () => void
 }
 
-export function HamburgerMenu({ 
-  isOpen, 
-  onToggle, 
-  onOpenSettings, 
+export function HamburgerMenu({
+  isOpen,
+  onToggle,
+  onOpenSettings,
   onOpenProfile,
-  onOpenOffline 
+  onOpenOffline
 }: HamburgerMenuProps) {
   const [darkMode, setDarkMode] = useState(true)
 
-  if (!isOpen) {
-    return (
-      <Button
-        variant="secondary"
-        size="icon"
-        className="absolute top-4 left-4 z-10 bg-card/95 backdrop-blur-sm border border-border shadow-lg"
-        onClick={onToggle}
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
-    )
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onToggle}
-      />
+    <>
+      <IonHeader>
+        <IonToolbar>
+          <IonTitle>RockScout</IonTitle>
+        </IonToolbar>
+      </IonHeader>
 
-      {/* Menu panel */}
-      <div className="relative w-80 max-w-[85vw] h-full bg-card shadow-2xl flex flex-col animate-in slide-in-from-left duration-300">
-        {/* Header */}
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">RockScout</h2>
-            <Button variant="ghost" size="icon" onClick={onToggle}>
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* User profile preview */}
-          <button 
-            className="flex items-center gap-3 w-full p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-            onClick={() => { onOpenProfile(); onToggle() }}
+      <IonContent>
+        {/* User Profile Preview */}
+        <IonMenuToggle autoHide={false}>
+          <IonItem
+            button
+            detail={false}
+            onClick={onOpenProfile}
+            className="native-button my-2 mx-2 rounded-xl"
+            lines="none"
+            style={{ '--background': 'var(--ion-color-step-100)' }}
           >
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={mockUser.avatar || "/placeholder.svg"} />
-              <AvatarFallback>{mockUser.name[0]}</AvatarFallback>
-            </Avatar>
-            <div className="text-left">
-              <p className="font-medium text-foreground">{mockUser.name}</p>
-              <p className="text-xs text-muted-foreground">{mockUser.email}</p>
-            </div>
-          </button>
-        </div>
+            <IonAvatar slot="start">
+              <img src={mockUser.avatar || "/placeholder.svg"} alt={mockUser.name} />
+            </IonAvatar>
+            <IonLabel>
+              <h2 className="font-medium">{mockUser.name}</h2>
+              <p className="text-xs">{mockUser.email}</p>
+            </IonLabel>
+          </IonItem>
+        </IonMenuToggle>
 
-        {/* Menu items */}
-        <nav className="flex-1 overflow-y-auto p-2">
-          <div className="space-y-1">
-            <button
-              className="flex items-center gap-3 w-full p-3 rounded-lg text-foreground hover:bg-muted transition-colors"
-              onClick={() => { onOpenProfile(); onToggle() }}
-            >
-              <User className="h-5 w-5 text-muted-foreground" />
-              <span>My Profile</span>
-            </button>
+        {/* Main Menu Items */}
+        <IonList lines="none" className="px-2">
+          <IonMenuToggle autoHide={false}>
+            <IonItem button detail={false} onClick={onOpenProfile} className="native-button rounded-lg my-1">
+              <IonIcon icon={personOutline} slot="start" />
+              <IonLabel>My Profile</IonLabel>
+            </IonItem>
+          </IonMenuToggle>
 
-            <button
-              className="flex items-center gap-3 w-full p-3 rounded-lg text-foreground hover:bg-muted transition-colors"
-              onClick={() => { onOpenSettings(); onToggle() }}
-            >
-              <Settings className="h-5 w-5 text-muted-foreground" />
-              <span>Settings</span>
-            </button>
+          <IonMenuToggle autoHide={false}>
+            <IonItem button detail={false} onClick={onOpenSettings} className="native-button rounded-lg my-1">
+              <IonIcon icon={settingsOutline} slot="start" />
+              <IonLabel>Settings</IonLabel>
+            </IonItem>
+          </IonMenuToggle>
 
-            <button
-              className="flex items-center gap-3 w-full p-3 rounded-lg text-foreground hover:bg-muted transition-colors"
-              onClick={() => { onOpenOffline(); onToggle() }}
-            >
-              <Download className="h-5 w-5 text-muted-foreground" />
-              <span>Offline Regions</span>
-            </button>
+          <IonMenuToggle autoHide={false}>
+            <IonItem button detail={false} onClick={onOpenOffline} className="native-button rounded-lg my-1">
+              <IonIcon icon={downloadOutline} slot="start" />
+              <IonLabel>Offline Regions</IonLabel>
+            </IonItem>
+          </IonMenuToggle>
 
-            <div className="flex items-center justify-between w-full p-3 rounded-lg text-foreground">
-              <div className="flex items-center gap-3">
-                {darkMode ? (
-                  <Moon className="h-5 w-5 text-muted-foreground" />
-                ) : (
-                  <Sun className="h-5 w-5 text-muted-foreground" />
-                )}
-                <span>Dark Mode</span>
-              </div>
-              <Switch checked={darkMode} onCheckedChange={setDarkMode} />
-            </div>
-          </div>
+          <IonItem lines="none" className="rounded-lg my-1">
+            <IonIcon icon={darkMode ? moonOutline : sunnyOutline} slot="start" />
+            <IonLabel>Dark Mode</IonLabel>
+            <IonToggle
+              slot="end"
+              checked={darkMode}
+              onIonChange={(e) => setDarkMode(e.detail.checked)}
+            />
+          </IonItem>
+        </IonList>
 
-          <div className="my-4 border-t border-border" />
+        {/* Divider */}
+        <div className="h-px bg-border mx-4 my-4" />
 
-          <div className="space-y-1">
-            <button className="flex items-center gap-3 w-full p-3 rounded-lg text-foreground hover:bg-muted transition-colors">
-              <Database className="h-5 w-5 text-muted-foreground" />
-              <span>Data & Storage</span>
-            </button>
+        {/* Secondary Menu Items */}
+        <IonList lines="none" className="px-2">
+          <IonItem button detail={false} className="native-button rounded-lg my-1">
+            <IonIcon icon={serverOutline} slot="start" />
+            <IonLabel>Data & Storage</IonLabel>
+          </IonItem>
 
-            <button className="flex items-center gap-3 w-full p-3 rounded-lg text-foreground hover:bg-muted transition-colors">
-              <Shield className="h-5 w-5 text-muted-foreground" />
-              <span>Privacy & Security</span>
-            </button>
+          <IonItem button detail={false} className="native-button rounded-lg my-1">
+            <IonIcon icon={shieldOutline} slot="start" />
+            <IonLabel>Privacy & Security</IonLabel>
+          </IonItem>
 
-            <button className="flex items-center gap-3 w-full p-3 rounded-lg text-foreground hover:bg-muted transition-colors">
-              <HelpCircle className="h-5 w-5 text-muted-foreground" />
-              <span>Help & Support</span>
-            </button>
+          <IonItem button detail={false} className="native-button rounded-lg my-1">
+            <IonIcon icon={helpCircleOutline} slot="start" />
+            <IonLabel>Help & Support</IonLabel>
+          </IonItem>
 
-            <button className="flex items-center gap-3 w-full p-3 rounded-lg text-foreground hover:bg-muted transition-colors">
-              <MessageSquare className="h-5 w-5 text-muted-foreground" />
-              <span>Send Feedback</span>
-            </button>
-          </div>
-        </nav>
+          <IonItem button detail={false} className="native-button rounded-lg my-1">
+            <IonIcon icon={chatbubbleOutline} slot="start" />
+            <IonLabel>Send Feedback</IonLabel>
+          </IonItem>
+        </IonList>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border">
-          <button className="flex items-center gap-3 w-full p-3 rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
-            <LogOut className="h-5 w-5" />
-            <span>Sign Out</span>
-          </button>
-          <p className="text-xs text-muted-foreground text-center mt-3">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border bg-card">
+          <IonItem
+            button
+            detail={false}
+            className="native-button rounded-lg"
+            lines="none"
+            style={{ '--color': 'var(--ion-color-danger)' }}
+          >
+            <IonIcon icon={logOutOutline} slot="start" color="danger" />
+            <IonLabel color="danger">Sign Out</IonLabel>
+          </IonItem>
+          <IonNote className="block text-center text-xs mt-3">
             RockScout v1.0.0
-          </p>
+          </IonNote>
+          {/* Safe area padding */}
+          <div style={{ height: 'env(safe-area-inset-bottom, 0px)' }} />
         </div>
-      </div>
-    </div>
+      </IonContent>
+    </>
   )
 }

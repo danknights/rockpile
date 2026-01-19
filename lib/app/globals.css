@@ -1,7 +1,92 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+/* Ionic Core CSS */
+@import '@ionic/react/css/core.css';
+@import '@ionic/react/css/normalize.css';
+@import '@ionic/react/css/structure.css';
+@import '@ionic/react/css/typography.css';
+
+/* Ionic Optional CSS */
+@import '@ionic/react/css/padding.css';
+@import '@ionic/react/css/float-elements.css';
+@import '@ionic/react/css/text-alignment.css';
+@import '@ionic/react/css/text-transformation.css';
+@import '@ionic/react/css/flex-utils.css';
+@import '@ionic/react/css/display.css';
+
+/* Ionic Dark Mode */
+@import '@ionic/react/css/palettes/dark.always.css';
+
 @custom-variant dark (&:is(.dark *));
+
+/* ========================================
+   NATIVE-FEEL CSS RULES
+   Prevents web-like behaviors on mobile
+   ======================================== */
+
+/* Prevent text selection across the app */
+* {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Allow text selection only in input fields */
+input, textarea, [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Prevent rubber-band scrolling and improve touch */
+html, body {
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Safe Area Insets for notch/home indicator */
+:root {
+  --ion-safe-area-top: env(safe-area-inset-top, 0px);
+  --ion-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --ion-safe-area-left: env(safe-area-inset-left, 0px);
+  --ion-safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+/* Apply safe area padding to main content */
+ion-content {
+  --padding-top: var(--ion-safe-area-top);
+  --padding-bottom: var(--ion-safe-area-bottom);
+}
+
+/* Native button feedback */
+.native-button,
+ion-button,
+button {
+  transition: transform 0.1s ease, opacity 0.1s ease;
+}
+
+.native-button:active,
+ion-button:active,
+button:active {
+  transform: scale(0.96);
+  opacity: 0.8;
+}
+
+/* Prevent tap highlight on iOS */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Smooth scrolling for all scrollable containers */
+.scroll-container {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ========================================
+   THEME VARIABLES
+   ======================================== */
 
 :root {
   --background: oklch(0.145 0 0);
@@ -37,6 +122,22 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.28 0 0);
   --sidebar-ring: oklch(0.65 0.18 145);
+
+  /* Ionic Theme Variables */
+  --ion-background-color: #0a0a0a;
+  --ion-background-color-rgb: 10, 10, 10;
+  --ion-text-color: #fafafa;
+  --ion-text-color-rgb: 250, 250, 250;
+  --ion-color-primary: #22c55e;
+  --ion-color-primary-rgb: 34, 197, 94;
+  --ion-color-primary-contrast: #000000;
+  --ion-color-primary-contrast-rgb: 0, 0, 0;
+  --ion-color-primary-shade: #1eab52;
+  --ion-color-primary-tint: #38cb6e;
+  --ion-toolbar-background: #0a0a0a;
+  --ion-toolbar-color: #fafafa;
+  --ion-item-background: #171717;
+  --ion-card-background: #171717;
 }
 
 .dark {
@@ -75,8 +176,8 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  --font-sans: 'Geist', 'Geist Fallback', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -122,4 +223,52 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ========================================
+   MAPBOX OVERRIDES FOR MOBILE
+   ======================================== */
+.mapboxgl-ctrl-group {
+  background: rgba(23, 23, 23, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.mapboxgl-ctrl-group button {
+  background: transparent !important;
+}
+
+.mapboxgl-ctrl-group button + button {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ========================================
+   IONIC COMPONENT CUSTOMIZATIONS
+   ======================================== */
+ion-modal {
+  --ion-background-color: var(--card);
+}
+
+ion-modal::part(backdrop) {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+ion-action-sheet {
+  --background: var(--card);
+  --button-background: transparent;
+  --button-color: var(--foreground);
+}
+
+/* Full-height app container */
+ion-app {
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile */
+}
+
+/* Map container should fill available space */
+.map-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
