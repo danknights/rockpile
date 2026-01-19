@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import { Protocol } from 'pmtiles'
 import { IonIcon } from '@ionic/react'
-import { alertCircleOutline, mapOutline } from 'ionicons/icons'
-import { mockFeatures, publicLands, scannedAreas } from '@/lib/mock-data'
+import { mapOutline } from 'ionicons/icons'
+import { publicLands } from '@/lib/mock-data'
 import type { Feature, MapFilter } from '@/lib/types'
 
 interface MapViewProps {
@@ -19,31 +20,74 @@ interface MapViewProps {
 export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, userLocation }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
-  const markersRef = useRef<mapboxgl.Marker[]>([])
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null)
   const routeLayerRef = useRef<string | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
 
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+  const featuresUrl = 'https://f005.backblazeb2.com/file/rocky-static-assets/tiles/features.pmtiles'
+  const coverageUrl = 'https://f005.backblazeb2.com/file/rocky-static-assets/coverage/scanned.pmtiles'
 
-  const filterFeatures = useCallback((features: Feature[]) => {
-    return features.filter((f) => {
-      if (!filter.types.includes(f.type)) return false
-      if (filter.seenByAnyone !== null && f.seenByAnyone !== filter.seenByAnyone) return false
-      if (filter.seenByUser !== null && f.isSeen !== filter.seenByUser) return false
-      if (filter.minHeight !== null && f.height < filter.minHeight) return false
-      if (filter.maxHeight !== null && f.height > filter.maxHeight) return false
-      if (filter.maxDistanceToRoad !== null && f.distanceToRoad > filter.maxDistanceToRoad) return false
-      if (filter.maxBushwhack !== null && f.bushwhackDistance > filter.maxBushwhack) return false
-      if (filter.favorites && !f.isFavorite) return false
-      if (filter.hasClimbs && f.climbs.filter((c) => c.status === 'send').length === 0) return false
-      if (filter.hasProjects && f.climbs.filter((c) => c.status === 'project').length === 0) return false
-      if (filter.hasPossibleLines && f.climbs.filter((c) => c.status === 'possible').length === 0) return false
-      if (!filter.notARock && f.notARock !== null) return false
-      return true
-    })
+  // Register PMTiles protocol (only once)
+  useEffect(() => {
+    const protocol = new Protocol()
+    mapboxgl.addProtocol('pmtiles', protocol.tile)
+    return () => {
+      mapboxgl.removeProtocol('pmtiles')
+    }
+  }, [])
+
+  // Construct Mapbox Filter expression from MapFilter state
+  const getMapboxFilter = useCallback(() => {
+    const filters: any[] = ['all']
+
+    // Filter by Type
+    if (filter.types.length > 0) {
+      filters.push(['in', ['get', 'feature_type'], ['literal', filter.types]])
+    } else {
+      filters.push(false) // Show nothing if no types selected
+    }
+
+    // Min Height
+    if (filter.minHeight !== null) {
+      filters.push(['>=', ['get', 'height_m'], filter.minHeight])
+    }
+
+    // Max Height
+    if (filter.maxHeight !== null) {
+      filters.push(['<=', ['get', 'height_m'], filter.maxHeight])
+    }
+
+    // Handled in backend/tiles usually, but if properties exist:
+    // seenBy, favorites, etc. might not be in the vector tiles yet.
+    // For now, we only filter on properties we know exist in the tiles.
+    // The previous mock implementation did client-side filtering on all fields.
+    // We will assume the tiles have 'height_m', 'feature_type'.
+
+    // Filter 'not a rock' logic if it exists in tiles
+    // filters.push(['==', ['get', 'not_a_rock'], null]) 
+
+    return filters
   }, [filter])
+
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return
+    
+    // Update filters for both layers
+    try {
+        const filterExpr = getMapboxFilter()
+        if (map.current.getLayer('boulders')) {
+            map.current.setFilter('boulders', ['all', ['==', ['get', 'feature_type'], 'boulder'], ...filterExpr.slice(1)])
+        }
+        if (map.current.getLayer('cliffs')) {
+            map.current.setFilter('cliffs', ['all', ['==', ['get', 'feature_type'], 'cliff'], ...filterExpr.slice(1)])
+        }
+    } catch (e) {
+        console.error("Error setting filter:", e)
+    }
+
+  }, [filter, mapLoaded, getMapboxFilter])
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return
@@ -60,15 +104,10 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
         container: mapContainer.current,
         style: showSatellite ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/outdoors-v12',
         center: [-91.68565, 47.78407],
-        zoom: 14,
-        pitch: showSatellite ? 45 : 0,
-        // Mobile optimizations
+        zoom: 13,
+        pitch: showSatellite ? 60 : 0,
         attributionControl: false,
         logoPosition: 'bottom-left',
-        touchZoomRotate: true,
-        touchPitch: true,
-        dragRotate: true,
-        // Performance optimizations for mobile
         fadeDuration: 0,
         maxTileCacheSize: 50,
       })
@@ -79,19 +118,15 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
         }
       })
 
-      // Mobile-friendly scale control
       map.current.addControl(
         new mapboxgl.ScaleControl({ maxWidth: 80, unit: 'imperial' }),
         'bottom-left'
       )
-
-      // Add attribution control in a less obtrusive position
       map.current.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
 
       map.current.on('load', () => {
         setMapLoaded(true)
-        addPublicLandsLayer()
-        addScannedAreasLayer()
+        initializeLayers()
       })
     } catch (err) {
       setMapError('Failed to initialize map. Please check your Mapbox token.')
@@ -103,6 +138,127 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
     }
   }, [token])
 
+  const initializeLayers = () => {
+      if (!map.current) return
+
+      // Add Coverage Source
+      map.current.addSource('coverage', {
+          type: 'vector',
+          url: 'pmtiles://' + coverageUrl
+      })
+
+      // Add Features Source
+      map.current.addSource('features', {
+          type: 'vector',
+          url: 'pmtiles://' + featuresUrl
+      })
+
+      // Scanned Areas Layer
+      map.current.addLayer({
+          id: 'scanned-areas-fill',
+          type: 'fill',
+          source: 'coverage',
+          'source-layer': 'coverage',
+          paint: { 'fill-color': '#00cc00', 'fill-opacity': 0.15 }
+      })
+      
+      map.current.addLayer({
+        id: 'scanned-areas-outline',
+        type: 'line',
+        source: 'coverage',
+        'source-layer': 'coverage',
+        paint: { 'line-color': '#009900', 'line-width': 1, 'line-opacity': 0.4 }
+      })
+
+      // Boulders Layer
+      map.current.addLayer({
+          id: 'boulders',
+          type: 'circle',
+          source: 'features',
+          'source-layer': 'features',
+          filter: ['==', ['get', 'feature_type'], 'boulder'],
+          paint: {
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 12, 6, 16, 10, 18, 14],
+              'circle-color': '#ff6600',
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#ffffff',
+              'circle-opacity': 1
+          }
+      })
+
+      // Cliffs Layer
+      map.current.addLayer({
+          id: 'cliffs',
+          type: 'circle',
+          source: 'features',
+          'source-layer': 'features',
+          filter: ['==', ['get', 'feature_type'], 'cliff'],
+          paint: {
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 12, 6, 16, 10, 18, 14],
+            'circle-color': '#0066ff',
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#ffffff',
+            'circle-opacity': 1
+          }
+      })
+
+      // Handle Interactions
+      const interactionLayers = ['boulders', 'cliffs']
+      
+      interactionLayers.forEach(layer => {
+          map.current?.on('click', layer, (e) => {
+              if (e.features && e.features.length > 0) {
+                  const f = e.features[0]
+                  const props = f.properties || {}
+                  
+                  // Map Vector properties to App Feature Interface
+                  const appFeature: Feature = {
+                      id: props.id || f.id?.toString() || 'unknown',
+                      type: props.feature_type === 'cliff' ? 'cliff' : 'boulder',
+                      name: props.name || undefined,
+                      // Vector tiles usually have geometry, but we want center point.
+                      // For points, geometry.coordinates is [lng, lat]
+                      // Note: Mapbox quantizes coords. Properties likely contain original high-res coords if the pipeline added them.
+                      // Fallback to geometry.
+                      latitude: props.lat ?? (f.geometry as any).coordinates[1],
+                      longitude: props.lon ?? (f.geometry as any).coordinates[0],
+                      elevation: props.elevation_m || 0,
+                      height: props.height_m || 0,
+                      length: props.length_m || 0,
+                      width: props.width_m || 0,
+                      distanceToRoad: 0, // Not in tiles yet
+                      bushwhackDistance: 0, // Not in tiles yet
+                      hardness: 0,
+                      isFavorite: false, // Local state not in tiles
+                      isSeen: false, // Local state not in tiles
+                      seenByAnyone: true,
+                      notARock: null,
+                      modelUrl: props.mesh_url || undefined,
+                      climbs: [],
+                      photos: [],
+                      comments: [],
+                      links: [],
+                      isPublished: true,
+                      hasLocalEdits: false
+                  }
+                  
+                  onFeatureSelect(appFeature)
+              }
+          })
+
+          map.current?.on('mouseenter', layer, () => {
+              if (map.current) map.current.getCanvas().style.cursor = 'pointer'
+          })
+
+          map.current?.on('mouseleave', layer, () => {
+            if (map.current) map.current.getCanvas().style.cursor = ''
+          })
+      })
+
+      // Add existing public lands (mock) if needed, or remove if PMTiles covers it
+      addPublicLandsLayer()
+  }
+
   useEffect(() => {
     if (!map.current || !mapLoaded) return
 
@@ -111,10 +267,11 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
     )
 
     map.current.once('style.load', () => {
-      addPublicLandsLayer()
-      addScannedAreasLayer()
+      // Re-add sources and layers when style changes because Mapbox removes them
+      initializeLayers()
+      
       if (showSatellite) {
-        map.current?.easeTo({ pitch: 45 })
+        map.current?.easeTo({ pitch: 60 })
       } else {
         map.current?.easeTo({ pitch: 0 })
       }
@@ -162,100 +319,6 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
       })
     })
   }
-
-  const addScannedAreasLayer = () => {
-    if (!map.current) return
-
-    scannedAreas.forEach((area) => {
-      const sourceId = `scanned-${area.id}`
-      if (map.current?.getSource(sourceId)) return
-
-      map.current?.addSource(sourceId, {
-        type: 'geojson',
-        data: {
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'Polygon',
-            coordinates: [[...area.bounds, area.bounds[0]]],
-          },
-        },
-      })
-
-      map.current?.addLayer({
-        id: `${sourceId}-fill`,
-        type: 'fill',
-        source: sourceId,
-        paint: {
-          'fill-color': '#60a5fa',
-          'fill-opacity': 0.08,
-        },
-      })
-    })
-  }
-
-  useEffect(() => {
-    if (!map.current || !mapLoaded) return
-
-    markersRef.current.forEach((m) => m.remove())
-    markersRef.current = []
-
-    const filteredFeatures = filterFeatures(mockFeatures)
-
-    filteredFeatures.forEach((feature) => {
-      const el = document.createElement('div')
-      el.className = 'feature-marker native-button'
-
-      const isGray = feature.notARock !== null
-      const color = isGray ? '#6b7280' : feature.type === 'boulder' ? '#f97316' : '#3b82f6'
-
-      // Larger touch targets for mobile (44px minimum)
-      el.innerHTML = `
-        <div style="
-          width: 44px;
-          height: 44px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">
-          <div style="
-            width: 28px;
-            height: 28px;
-            background: ${color};
-            border: 2px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.1s ease;
-          ">
-            ${feature.isFavorite ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' : ''}
-          </div>
-        </div>
-      `
-
-      // Add active state styling
-      el.addEventListener('touchstart', () => {
-        const inner = el.querySelector('div > div') as HTMLElement
-        if (inner) inner.style.transform = 'scale(0.9)'
-      })
-      el.addEventListener('touchend', () => {
-        const inner = el.querySelector('div > div') as HTMLElement
-        if (inner) inner.style.transform = 'scale(1)'
-      })
-
-      const marker = new mapboxgl.Marker(el)
-        .setLngLat([feature.longitude, feature.latitude])
-        .addTo(map.current!)
-
-      el.addEventListener('click', () => {
-        onFeatureSelect(feature)
-      })
-
-      markersRef.current.push(marker)
-    })
-  }, [filter, mapLoaded, filterFeatures, onFeatureSelect])
 
   useEffect(() => {
     if (!map.current || !userLocation) return
