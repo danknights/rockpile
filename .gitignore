@@ -1,0 +1,106 @@
+# Created based on Project RockScout Tech Stack (Next.js + pnpm + Mapbox)
+
+### NextJS ###
+# dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# testing
+coverage/
+
+# next.js
+.next/
+out/
+
+# production
+build/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# local env files (Crucial for Mapbox tokens)
+.env
+.env*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+### Project Specific: 3D & LiDAR Assets ###
+# Large binary files that shouldn't be in git
+*.las
+*.laz
+*.ply
+*.pcd
+*.e57
+# If you have large raw texture scans/photos not meant for public folder
+*.psd
+*.tiff
+
+### Python (Data Processing Scripts) ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+# (Common names for local envs)
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Jupyter Notebook (If you use them for data analysis)
+.ipynb_checkpoints
+
+### IDE & OS ###
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# VS Code
+.vscode/
+# !.vscode/extensions.json # Uncomment if you want to share recommended extensions
+# !.vscode/settings.json   # Uncomment if you want to share project settings
+
+# JetBrains / PyCharm / WebStorm
+.idea/
+
