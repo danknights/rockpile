@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">RockScout</string>
+    <string name="title_activity_main">RockScout</string>
+    <string name="package_name">com.rockscout.app</string>
+    <string name="custom_url_scheme">com.rockscout.app</string>
+</resources>
