@@ -33,13 +33,16 @@
 }
 
 /* Allow text selection only in input fields */
-input, textarea, [contenteditable="true"] {
+input,
+textarea,
+[contenteditable="true"] {
   user-select: text;
   -webkit-user-select: text;
 }
 
 /* Prevent rubber-band scrolling and improve touch */
-html, body {
+html,
+body {
   overscroll-behavior: none;
   touch-action: manipulation;
   -webkit-overflow-scrolling: touch;
@@ -220,6 +223,7 @@ button:active {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -237,7 +241,7 @@ button:active {
   background: transparent !important;
 }
 
-.maplibregl-ctrl-group button + button {
+.maplibregl-ctrl-group button+button {
   border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
@@ -262,7 +266,8 @@ ion-action-sheet {
 /* Full-height app container */
 ion-app {
   height: 100vh;
-  height: 100dvh; /* Dynamic viewport height for mobile */
+  height: 100dvh;
+  /* Dynamic viewport height for mobile */
 }
 
 /* Map container should fill available space */
@@ -271,4 +276,83 @@ ion-app {
   inset: 0;
   width: 100%;
   height: 100%;
+}
+
+/* ========================================
+   CLUSTER MARKER STYLES
+   ======================================== */
+.cluster-marker {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.cluster-marker:hover {
+  transform: scale(1.1);
+  z-index: 10;
+}
+
+.cluster-marker svg {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.cluster-count {
+  position: absolute;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  text-shadow: 0 0 3px white, 0 0 3px white, 0 0 3px white;
+  pointer-events: none;
+}
+
+/* Cluster popup styles */
+.cluster-popup {
+  text-align: center;
+  min-width: 200px;
+}
+
+.cluster-popup .popup-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 12px;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 8px;
+}
+
+.cluster-chart {
+  margin: 10px auto;
+  display: block;
+}
+
+.cluster-stats {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.cluster-stat {
+  text-align: center;
+}
+
+.cluster-stat-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.cluster-stat-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.cluster-stat.boulder .cluster-stat-value {
+  color: #ff6600;
+}
+
+.cluster-stat.cliff .cluster-stat-value {
+  color: #0066ff;
 }

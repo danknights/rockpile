@@ -55,6 +55,7 @@ export interface Feature {
   seenByAnyone: boolean
   notARock: NotARockType
   modelUrl?: string
+  viewerUrl?: string
   climbs: Climb[]
   photos: Photo[]
   comments: Comment[]

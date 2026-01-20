@@ -4,11 +4,11 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
-// Removed mapbox-request-transformer imports
 import { IonIcon } from '@ionic/react'
 import { mapOutline } from 'ionicons/icons'
 import { publicLands } from '@/lib/mock-data'
 import type { Feature, MapFilter } from '@/lib/types'
+import { createCustomLayer3D } from './layer-3d'
 
 interface MapViewProps {
   onFeatureSelect: (feature: Feature) => void
@@ -21,6 +21,7 @@ interface MapViewProps {
 export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, userLocation }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
+  const customLayerRef = useRef<any>(null)
   const userMarkerRef = useRef<maplibregl.Marker | null>(null)
   const routeLayerRef = useRef<string | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
@@ -136,7 +137,17 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
 
       map.current.on('load', () => {
         setMapLoaded(true)
+
         initializeLayers()
+
+        // Setup 3D layer update listeners
+        map.current?.on('moveend', () => customLayerRef.current?.updateMeshes())
+        map.current?.on('zoomend', () => customLayerRef.current?.updateMeshes())
+        map.current?.on('sourcedata', (e) => {
+          if (e.sourceId === 'features' && e.isSourceLoaded) {
+            customLayerRef.current?.updateMeshes()
+          }
+        })
       })
     } catch (err) {
       setMapError('Failed to initialize map. Please check your API Key.')
@@ -150,6 +161,17 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
 
   const initializeLayers = () => {
     if (!map.current) return
+
+    // Add Terrain Source for 3D (Must be re-added if style changes)
+    if (!map.current.getSource('terrain')) {
+      map.current.addSource('terrain', {
+        type: 'raster-dem',
+        url: `https://api.maptiler.com/tiles/terrain-rgb/tiles.json?key=${apiKey}`,
+        tileSize: 256,
+        maxzoom: 12
+      });
+      map.current.setTerrain({ source: 'terrain', exaggeration: 1.5 });
+    }
 
     // Add Coverage Source
     if (!map.current.getSource('coverage')) {
@@ -206,6 +228,16 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
       })
     }
 
+    // 3D Layer
+    if (!map.current.getLayer('3d-boulders')) {
+      customLayerRef.current = createCustomLayer3D(map.current)
+      // Add before boulders/cliffs if possible, or just add it.
+      // MapLibre order: sources, then layers.
+      // We want it to be part of the map.
+      map.current.addLayer(customLayerRef.current)
+      customLayerRef.current.updateMeshes()
+    }
+
     // Cliffs Layer
     if (!map.current.getLayer('cliffs')) {
       map.current.addLayer({
@@ -236,6 +268,8 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
       map.current?.on('click', layer, (e) => {
         if (e.features && e.features.length > 0) {
           const f = e.features[0]
+          console.log('DEBUG: Clicked feature:', f)
+          console.log('DEBUG: Raw properties:', f.properties)
           const props = f.properties || {}
 
           const appFeature: Feature = {
@@ -245,21 +279,22 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
             latitude: props.lat ?? (f.geometry as any).coordinates[1],
             longitude: props.lon ?? (f.geometry as any).coordinates[0],
             elevation: props.elevation_m || 0,
-            height: props.height_m || 0,
-            length: props.length_m || 0,
-            width: props.width_m || 0,
-            distanceToRoad: 0,
-            bushwhackDistance: 0,
+            height: props.height || 0,
+            length: props.length || 0,
+            width: props.width || 0,
+            distanceToRoad: props.distance_to_road || 0,
+            bushwhackDistance: props.distance_to_trail || 0,
             hardness: 0,
             isFavorite: false,
             isSeen: false,
             seenByAnyone: true,
             notARock: null,
             modelUrl: props.mesh_url || undefined,
+            viewerUrl: props.viewer_url || undefined,
             climbs: [],
             photos: [],
             comments: [],
-            links: [],
+            links: props.viewer_url ? [{ type: 'other', url: props.viewer_url, label: 'View in 3D' }] : [],
             isPublished: true,
             hasLocalEdits: false
           }
@@ -431,6 +466,251 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
     bounds.extend([goToFeature.longitude, goToFeature.latitude])
     map.current.fitBounds(bounds, { padding: 100 })
   }, [goToFeature, userLocation, mapLoaded])
+
+  // =================================================================
+  // CLUSTER LOGIC
+  // =================================================================
+  const clusterMarkersRef = useRef<{ [key: string]: maplibregl.Marker }>({})
+
+  // SIZE CONFIGURATION
+  const CLUSTER_MIN_SIZE = 50      // Minimum donut size in pixels
+  const CLUSTER_MAX_SIZE = 90      // Maximum donut size in pixels
+  const CLUSTER_SIZE_SCALE = 3     // Pixels to add per feature
+  const CLUSTER_STROKE_WIDTH = 10  // Donut ring thickness
+
+  const createDonutChart = (boulders: number, cliffs: number, size: number) => {
+    const total = boulders + cliffs
+    if (total === 0) return null
+
+    const radius = size / 2 - 4
+    const cx = size / 2
+    const cy = size / 2
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('width', size.toString())
+    svg.setAttribute('height', size.toString())
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`)
+
+    // White background circle
+    const bgCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+    bgCircle.setAttribute('cx', cx.toString())
+    bgCircle.setAttribute('cy', cy.toString())
+    bgCircle.setAttribute('r', (radius + 4).toString())
+    bgCircle.setAttribute('fill', 'white')
+    svg.appendChild(bgCircle)
+
+    const arcRadius = radius
+    const boulderAngle = (boulders / total) * 360
+    const cliffAngle = (cliffs / total) * 360
+
+    function polarToCartesian(angleDeg: number) {
+      const angleRad = (angleDeg - 90) * Math.PI / 180
+      return {
+        x: cx + arcRadius * Math.cos(angleRad),
+        y: cy + arcRadius * Math.sin(angleRad)
+      }
+    }
+
+    function createArc(startAngle: number, endAngle: number, color: string) {
+      const start = polarToCartesian(startAngle)
+      const end = polarToCartesian(endAngle)
+      const largeArc = (endAngle - startAngle) > 180 ? 1 : 0
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+      const d = `M ${start.x} ${start.y} A ${arcRadius} ${arcRadius} 0 ${largeArc} 1 ${end.x} ${end.y}`
+      path.setAttribute('d', d)
+      path.setAttribute('fill', 'none')
+      path.setAttribute('stroke', color)
+      path.setAttribute('stroke-width', CLUSTER_STROKE_WIDTH.toString())
+      path.setAttribute('stroke-linecap', 'butt')
+      return path
+    }
+
+    let currentAngle = 0
+
+    if (boulders > 0 && boulders < total) {
+      svg.appendChild(createArc(currentAngle, currentAngle + boulderAngle, '#ff6600'))
+      currentAngle += boulderAngle
+    } else if (boulders === total) {
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+      circle.setAttribute('cx', cx.toString())
+      circle.setAttribute('cy', cy.toString())
+      circle.setAttribute('r', arcRadius.toString())
+      circle.setAttribute('fill', 'none')
+      circle.setAttribute('stroke', '#ff6600')
+      circle.setAttribute('stroke-width', CLUSTER_STROKE_WIDTH.toString())
+      svg.appendChild(circle)
+    }
+
+    if (cliffs > 0 && cliffs < total) {
+      svg.appendChild(createArc(currentAngle, currentAngle + cliffAngle, '#0066ff'))
+    } else if (cliffs === total) {
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+      circle.setAttribute('cx', cx.toString())
+      circle.setAttribute('cy', cy.toString())
+      circle.setAttribute('r', arcRadius.toString())
+      circle.setAttribute('fill', 'none')
+      circle.setAttribute('stroke', '#0066ff')
+      circle.setAttribute('stroke-width', CLUSTER_STROKE_WIDTH.toString())
+      svg.appendChild(circle)
+    }
+
+    return svg
+  }
+
+  const createClusterMarker = (boulders: number, cliffs: number) => {
+    const total = boulders + cliffs
+    const size = Math.min(CLUSTER_MAX_SIZE, Math.max(CLUSTER_MIN_SIZE, CLUSTER_MIN_SIZE + total * CLUSTER_SIZE_SCALE))
+
+    const el = document.createElement('div')
+    el.className = 'cluster-marker'
+    el.style.width = `${size}px`
+    el.style.height = `${size}px`
+
+    const svg = createDonutChart(boulders, cliffs, size)
+    if (svg) {
+      el.appendChild(svg)
+    }
+
+    const count = document.createElement('div')
+    count.className = 'cluster-count'
+    count.textContent = total.toString()
+    el.appendChild(count)
+
+    return el
+  }
+
+  const showClusterPopup = (coords: [number, number], boulders: number, cliffs: number, total: number) => {
+    if (!map.current) return
+
+    const boulderPct = total > 0 ? Math.round((boulders / total) * 100) : 0
+    const cliffPct = total > 0 ? Math.round((cliffs / total) * 100) : 0
+
+    // Calculate SVG paths for popup donut
+    const cx = 40, cy = 40, r = 25
+    const boulderAngle = (boulders / total) * 360
+
+    function polarToCartesian(angleDeg: number) {
+      const angleRad = (angleDeg - 90) * Math.PI / 180
+      return { x: cx + r * Math.cos(angleRad), y: cy + r * Math.sin(angleRad) }
+    }
+
+    let boulderArc = '', cliffArc = ''
+
+    if (boulders === total) {
+      boulderArc = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#ff6600" stroke-width="10"/>`
+    } else if (cliffs === total) {
+      cliffArc = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#0066ff" stroke-width="10"/>`
+    } else {
+      if (boulders > 0) {
+        const start = polarToCartesian(0)
+        const end = polarToCartesian(boulderAngle)
+        const largeArc = boulderAngle > 180 ? 1 : 0
+        boulderArc = `<path d="M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}" fill="none" stroke="#ff6600" stroke-width="10"/>`
+      }
+      if (cliffs > 0) {
+        const start = polarToCartesian(boulderAngle)
+        const end = polarToCartesian(360)
+        const largeArc = (360 - boulderAngle) > 180 ? 1 : 0
+        cliffArc = `<path d="M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}" fill="none" stroke="#0066ff" stroke-width="10"/>`
+      }
+    }
+
+    const popupContent = `
+      <div class="cluster-popup">
+        <div class="popup-title">Feature Cluster</div>
+        <svg class="cluster-chart" width="80" height="80" viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r="30" fill="white" stroke="#eee" stroke-width="1"/>
+          ${boulderArc}
+          ${cliffArc}
+          <text x="40" y="44" text-anchor="middle" font-size="14" font-weight="600" fill="#333">${total}</text>
+        </svg>
+        <div class="cluster-stats">
+          <div class="cluster-stat boulder">
+            <div class="cluster-stat-value">${boulders}</div>
+            <div class="cluster-stat-label">Boulders (${boulderPct}%)</div>
+          </div>
+          <div class="cluster-stat cliff">
+            <div class="cluster-stat-value">${cliffs}</div>
+            <div class="cluster-stat-label">Cliffs (${cliffPct}%)</div>
+        </div>
+      </div>
+    `
+
+    const mapInstance = map.current
+    new maplibregl.Popup()
+      .setLngLat(coords)
+      .setHTML(popupContent)
+      .addTo(mapInstance)
+  }
+
+  const updateClusterMarkers = useCallback(() => {
+    if (!map.current) return
+
+    // Remove existing markers
+    Object.values(clusterMarkersRef.current).forEach(marker => marker.remove())
+    clusterMarkersRef.current = {}
+
+    // Query cluster features
+    // We query the 'features' source directly.
+    // Note: The source must be loaded for this to work.
+    const features = map.current.querySourceFeatures('features', {
+      sourceLayer: 'features',
+      filter: ['has', 'point_count']
+    })
+
+    features.forEach((cluster) => {
+      const coords = (cluster.geometry as any).coordinates as [number, number]
+      const props = cluster.properties
+      const boulders = props?.is_boulder || 0
+      const cliffs = props?.is_cliff || 0
+      const total = props?.point_count || (boulders + cliffs)
+
+      const key = `${coords[0].toFixed(4)}_${coords[1].toFixed(4)}`
+
+      if (clusterMarkersRef.current[key]) return
+
+      const el = createClusterMarker(boulders, cliffs)
+
+      el.addEventListener('click', (e) => {
+        e.stopPropagation() // Prevent map click
+        showClusterPopup(coords, boulders, cliffs, total)
+      })
+
+      if (map.current) {
+        const marker = new maplibregl.Marker({ element: el })
+          .setLngLat(coords)
+          .addTo(map.current)
+
+        clusterMarkersRef.current[key] = marker
+      }
+    })
+  }, [])
+
+  // Add listeners for cluster updates
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return
+
+    map.current.on('moveend', updateClusterMarkers)
+    map.current.on('zoomend', updateClusterMarkers)
+    map.current.on('sourcedata', (e) => {
+      if (e.sourceId === 'features' && e.isSourceLoaded) {
+        updateClusterMarkers()
+      }
+    })
+
+    // Initial update
+    updateClusterMarkers()
+
+    return () => {
+      // Cleanup
+      if (map.current) {
+        map.current.off('moveend', updateClusterMarkers)
+        map.current.off('zoomend', updateClusterMarkers)
+      }
+    }
+  }, [mapLoaded, updateClusterMarkers])
+
 
   if (mapError) {
     return (

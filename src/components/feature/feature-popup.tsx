@@ -33,6 +33,8 @@ import {
   linkOutline,
   logoYoutube,
   alertCircleOutline,
+  expandOutline,
+  contractOutline,
 } from 'ionicons/icons'
 import { Capacitor } from '@capacitor/core'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
@@ -174,15 +176,42 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
         onTouchEnd={handleTouchEnd}
       >
         {/* 3D Viewer */}
-        <LidarViewer
-          feature={feature}
-          isFullscreen={isViewerFullscreen}
-          onToggleFullscreen={() => setIsViewerFullscreen(!isViewerFullscreen)}
-          onNeedsRefinement={(type) => {
-            console.log('Needs refinement:', type)
-            handleEdit()
-          }}
-        />
+        {/* 3D Viewer */}
+        {feature.viewerUrl ? (
+          <div className={`relative bg-background ${isViewerFullscreen ? 'fixed inset-0 z-50' : 'h-64 rounded-t-xl overflow-hidden'}`}>
+            <iframe
+              src={feature.viewerUrl}
+              className="w-full h-full border-0 bg-black"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+            {/* Fullscreen toggle */}
+            <IonButton
+              fill="clear"
+              size="small"
+              className="absolute bg-black/40 rounded-full native-button"
+              style={{
+                top: isViewerFullscreen ? 'calc(env(safe-area-inset-top, 16px) + 8px)' : '12px',
+                right: '12px',
+                '--padding-start': '8px',
+                '--padding-end': '8px',
+              }}
+              onClick={() => setIsViewerFullscreen(!isViewerFullscreen)}
+            >
+              <IonIcon icon={isViewerFullscreen ? contractOutline : expandOutline} className="text-white text-xl" />
+            </IonButton>
+          </div>
+        ) : (
+          <LidarViewer
+            feature={feature}
+            isFullscreen={isViewerFullscreen}
+            onToggleFullscreen={() => setIsViewerFullscreen(!isViewerFullscreen)}
+            onNeedsRefinement={(type) => {
+              console.log('Needs refinement:', type)
+              handleEdit()
+            }}
+          />
+        )}
 
         {/* Publish toggle bar */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
