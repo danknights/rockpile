@@ -171,7 +171,7 @@ export function ClimbSection({ climbs, photos, onAddClimb, publishControl }: Cli
                   onClick={() => setClimbType(t)}
                   className="capitalize"
                 >
-                  {t.replace('-', ' ')}
+                  {t}
                 </Button>
               ))}
             </div>
@@ -180,12 +180,6 @@ export function ClimbSection({ climbs, photos, onAddClimb, publishControl }: Cli
           {/* Grading System Tabs - Visible if not boulder */}
           {climbType !== 'boulder' && (
             <div className="flex gap-4 border-b border-border">
-              <button
-                className={`py-2 text-sm font-medium border-b-2 transition-colors ${ratingSystem === 'v-scale' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-                onClick={() => setRatingSystem('v-scale')}
-              >
-                V-Scale
-              </button>
               <button
                 className={`py-2 text-sm font-medium border-b-2 transition-colors ${ratingSystem === 'yds' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                 onClick={() => setRatingSystem('yds')}
@@ -202,24 +196,21 @@ export function ClimbSection({ climbs, photos, onAddClimb, publishControl }: Cli
           )}
 
           {/* Rating Grid */}
-          {/* Hide V-scale grid for non-boulder types if not v-scale system */}
-          {(climbType === 'boulder' || ratingSystem === 'v-scale') && (
-            <div className="mt-2">
-              <div className="grid grid-cols-5 gap-1.5 max-h-48 overflow-y-auto p-1">
-                {grades.map(grade => (
-                  <button
-                    key={grade}
-                    className={`px-1 py-3 text-xs font-semibold rounded-md border transition-all ${selectedRating === grade
-                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                      : 'bg-card text-card-foreground border-border hover:bg-accent'}`}
-                    onClick={() => setSelectedRating(grade)}
-                  >
-                    {grade}
-                  </button>
-                ))}
-              </div>
+          <div className="mt-2">
+            <div className="grid grid-cols-5 gap-1.5 max-h-48 overflow-y-auto p-1">
+              {grades.map(grade => (
+                <button
+                  key={grade}
+                  className={`px-1 h-12 text-xs font-semibold rounded-md border transition-all ${selectedRating === grade
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                    : 'bg-card text-card-foreground border-border hover:bg-accent'}`}
+                  onClick={() => setSelectedRating(grade)}
+                >
+                  {grade}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           {/* Status */}
           <div>

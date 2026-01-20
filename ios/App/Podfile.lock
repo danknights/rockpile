@@ -12,26 +12,26 @@ PODS:
     - Capacitor
 
 DEPENDENCIES:
-  - "Capacitor (from `../../node_modules/@capacitor/ios`)"
-  - "CapacitorCamera (from `../../node_modules/@capacitor/camera`)"
-  - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
-  - "CapacitorGeolocation (from `../../node_modules/@capacitor/geolocation`)"
-  - "CapacitorHaptics (from `../../node_modules/@capacitor/haptics`)"
-  - "CapacitorStatusBar (from `../../node_modules/@capacitor/status-bar`)"
+  - "Capacitor (from `../../node_modules/.pnpm/@capacitor+ios@6.2.1_@capacitor+core@6.2.1/node_modules/@capacitor/ios`)"
+  - "CapacitorCamera (from `../../node_modules/.pnpm/@capacitor+camera@6.1.3_@capacitor+core@6.2.1/node_modules/@capacitor/camera`)"
+  - "CapacitorCordova (from `../../node_modules/.pnpm/@capacitor+ios@6.2.1_@capacitor+core@6.2.1/node_modules/@capacitor/ios`)"
+  - "CapacitorGeolocation (from `../../node_modules/.pnpm/@capacitor+geolocation@6.1.1_@capacitor+core@6.2.1/node_modules/@capacitor/geolocation`)"
+  - "CapacitorHaptics (from `../../node_modules/.pnpm/@capacitor+haptics@6.0.3_@capacitor+core@6.2.1/node_modules/@capacitor/haptics`)"
+  - "CapacitorStatusBar (from `../../node_modules/.pnpm/@capacitor+status-bar@6.0.3_@capacitor+core@6.2.1/node_modules/@capacitor/status-bar`)"
 
 EXTERNAL SOURCES:
   Capacitor:
-    :path: "../../node_modules/@capacitor/ios"
+    :path: "../../node_modules/.pnpm/@capacitor+ios@6.2.1_@capacitor+core@6.2.1/node_modules/@capacitor/ios"
   CapacitorCamera:
-    :path: "../../node_modules/@capacitor/camera"
+    :path: "../../node_modules/.pnpm/@capacitor+camera@6.1.3_@capacitor+core@6.2.1/node_modules/@capacitor/camera"
   CapacitorCordova:
-    :path: "../../node_modules/@capacitor/ios"
+    :path: "../../node_modules/.pnpm/@capacitor+ios@6.2.1_@capacitor+core@6.2.1/node_modules/@capacitor/ios"
   CapacitorGeolocation:
-    :path: "../../node_modules/@capacitor/geolocation"
+    :path: "../../node_modules/.pnpm/@capacitor+geolocation@6.1.1_@capacitor+core@6.2.1/node_modules/@capacitor/geolocation"
   CapacitorHaptics:
-    :path: "../../node_modules/@capacitor/haptics"
+    :path: "../../node_modules/.pnpm/@capacitor+haptics@6.0.3_@capacitor+core@6.2.1/node_modules/@capacitor/haptics"
   CapacitorStatusBar:
-    :path: "../../node_modules/@capacitor/status-bar"
+    :path: "../../node_modules/.pnpm/@capacitor+status-bar@6.0.3_@capacitor+core@6.2.1/node_modules/@capacitor/status-bar"
 
 SPEC CHECKSUMS:
   Capacitor: c95400d761e376be9da6be5a05f226c0e865cebf
@@ -41,6 +41,6 @@ SPEC CHECKSUMS:
   CapacitorHaptics: 40f83026feeee9cfe36e89e9c98a3baaaf20c450
   CapacitorStatusBar: 149cde8f1328ec3aa6cbdd872a55137ae3f98b16
 
-PODFILE CHECKSUM: 5541f1c6076f7e66e4de46cf05849e6188a49847
+PODFILE CHECKSUM: 8b380c5162d89cd909ed2e9758ce8818b8462625
 
 COCOAPODS: 1.16.2

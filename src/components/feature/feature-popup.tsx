@@ -264,37 +264,25 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
           </div>
 
           {/* Properties */}
-          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-            {/* Left Column: Dimensions */}
-            <div className="space-y-1">
-              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                <div className="text-right text-muted-foreground">Height</div>
-                <div className="text-left font-medium text-foreground">{feature.height.toFixed(1)}m</div>
-              </div>
-              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                <div className="text-right text-muted-foreground">Length</div>
-                <div className="text-left font-medium text-foreground">{feature.length.toFixed(1)}m</div>
-              </div>
-              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                <div className="text-right text-muted-foreground">Width</div>
-                <div className="text-left font-medium text-foreground">{feature.width.toFixed(1)}m</div>
-              </div>
-            </div>
+          <div className="flex justify-center">
+            <div className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-4 gap-y-2 text-sm max-w-md w-full">
+              {/* Row 1 */}
+              <div className="text-right text-muted-foreground whitespace-nowrap">Height</div>
+              <div className="text-left font-medium text-foreground">{feature.height?.toFixed(1) || '0.0'}m</div>
+              <div className="text-right text-muted-foreground whitespace-nowrap">Elevation</div>
+              <div className="text-left font-medium text-foreground">{feature.elevation?.toFixed(1) || '0.0'}m</div>
 
-            {/* Right Column: Location/Access Stats */}
-            <div className="space-y-1">
-              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                <div className="text-right text-muted-foreground">Elevation</div>
-                <div className="text-left font-medium text-foreground">{feature.elevation.toFixed(1)}m</div>
-              </div>
-              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                <div className="text-right text-muted-foreground">To road</div>
-                <div className="text-left font-medium text-foreground">{feature.distanceToRoad.toFixed(1)}m</div>
-              </div>
-              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
-                <div className="text-right text-muted-foreground">Bushwhack</div>
-                <div className="text-left font-medium text-foreground">{feature.bushwhackDistance.toFixed(1)}m</div>
-              </div>
+              {/* Row 2 */}
+              <div className="text-right text-muted-foreground whitespace-nowrap">Length</div>
+              <div className="text-left font-medium text-foreground">{feature.length?.toFixed(1) || '0.0'}m</div>
+              <div className="text-right text-muted-foreground whitespace-nowrap">To road</div>
+              <div className="text-left font-medium text-foreground">{feature.distanceToRoad?.toFixed(1) || '0.0'}m</div>
+
+              {/* Row 3 */}
+              <div className="text-right text-muted-foreground whitespace-nowrap">Width</div>
+              <div className="text-left font-medium text-foreground">{feature.width?.toFixed(1) || '0.0'}m</div>
+              <div className="text-right text-muted-foreground whitespace-nowrap">Bushwhack</div>
+              <div className="text-left font-medium text-foreground">{feature.bushwhackDistance?.toFixed(1) || '0.0'}m</div>
             </div>
           </div>
 
@@ -324,44 +312,59 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
           {/* Description */}
           <div className="space-y-2">
             <h3 className="font-medium text-foreground">Description</h3>
-            <div className="bg-muted/30 rounded-lg p-2">
-              <IonTextarea
-                className="text-sm"
-                placeholder="Add a description..."
-                value={feature.description}
-                onIonInput={e => {
-                  setFeature(prev => ({ ...prev, description: e.detail.value! }))
-                  handleEdit()
-                }}
-                autoGrow={true}
-              />
+            <div className="bg-card rounded-lg border border-border overflow-hidden">
+              <div className="p-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <span className="font-semibold text-primary text-xs">OP</span>
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Original Poster</span>
+                      <span className="text-xs text-muted-foreground">Top</span>
+                    </div>
+                    <IonTextarea
+                      className="text-sm min-h-[60px]"
+                      placeholder="Add a description..."
+                      value={feature.description}
+                      onIonInput={e => {
+                        setFeature(prev => ({ ...prev, description: e.detail.value! }))
+                        handleEdit()
+                      }}
+                      autoGrow={true}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Access */}
           <div className="space-y-2">
-            <div className="space-y-1">
-              <h3 className="font-medium text-foreground">Access</h3>
-              <p className="text-xs text-muted-foreground">How to get there? Access concerns?</p>
-            </div>
-            {/* reusing comment section for now, or just a textarea like description? 
-                 User said: "This will also allow comments regarding accessibility... I can't, people can "like" and reply to access issues posts."
-                 Implies a full comment section. For now I'll add a placeholder or a secondary comment section.
-                 Let's add a "Access details" text area for the main feature, and we can add a comment section specifically for access later if needed, 
-                 but the user prompt suggests it acts like a forum.
-                 Let's stick to a simple textarea for 'access notes' on the feature for now to match 'Description'.
-              */}
-            <div className="bg-muted/30 rounded-lg p-2">
-              <IonTextarea
-                className="text-sm"
-                placeholder="Add access details..."
-                value={feature.access || ''}
-                onIonInput={e => {
-                  setFeature(prev => ({ ...prev, access: e.detail.value! }))
-                  handleEdit()
-                }}
-                autoGrow={true}
-              />
+            <h3 className="font-medium text-foreground">Access</h3>
+            <div className="bg-card rounded-lg border border-border overflow-hidden">
+              <div className="p-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <span className="font-semibold text-primary text-xs">OP</span>
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Access Info</span>
+                    </div>
+                    <IonTextarea
+                      className="text-sm min-h-[60px]"
+                      placeholder="Add access details..."
+                      value={feature.access || ''}
+                      onIonInput={e => {
+                        setFeature(prev => ({ ...prev, access: e.detail.value! }))
+                        handleEdit()
+                      }}
+                      autoGrow={true}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -668,6 +671,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             handler: () => {
               setFeature({ ...feature, notARock: 'tree', needsRefinement: null })
               handleEdit()
+              present({ message: 'Recommendation submitted', duration: 2000, color: 'success' })
             },
           },
           {
@@ -675,6 +679,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             handler: () => {
               setFeature({ ...feature, notARock: 'building', needsRefinement: null })
               handleEdit()
+              present({ message: 'Recommendation submitted', duration: 2000, color: 'success' })
             },
           },
           {
@@ -682,6 +687,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             handler: () => {
               setFeature({ ...feature, notARock: null, needsRefinement: 'missing' })
               handleEdit()
+              present({ message: 'Recommendation submitted', duration: 2000, color: 'success' })
             },
           },
           {
@@ -689,6 +695,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             handler: () => {
               setFeature({ ...feature, notARock: null, needsRefinement: 'extra' })
               handleEdit()
+              present({ message: 'Recommendation submitted', duration: 2000, color: 'success' })
             },
           },
           {
@@ -696,6 +703,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             handler: () => {
               setFeature({ ...feature, notARock: 'other', needsRefinement: null })
               handleEdit()
+              present({ message: 'Recommendation submitted', duration: 2000, color: 'success' })
             },
           },
 

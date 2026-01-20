@@ -461,11 +461,27 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
       },
     })
 
+    // Only fit bounds if we just started navigating to a NEW feature
+    // We can track the current target ID to avoid re-fitting on every user move
+    // For now, simpler check: if we are close (zoom logic) or just let the user control zoom after initial fit.
+    // Ideally, we only run fitBounds when goToFeature changes identity.
+    // The dependency array includes userLocation, so this runs constantly during nav. BAD.
+    // Refactor to separate fitBounds from route update.
+  }, [goToFeature, userLocation, mapLoaded])
+
+  // New effect for initial fitBounds
+  useEffect(() => {
+    if (!map.current || !goToFeature || !userLocation) return
+
+    // Initial fit
     const bounds = new maplibregl.LngLatBounds()
     bounds.extend([userLocation.lng, userLocation.lat])
     bounds.extend([goToFeature.longitude, goToFeature.latitude])
-    map.current.fitBounds(bounds, { padding: 100 })
-  }, [goToFeature, userLocation, mapLoaded])
+    // Zoom out slowly/smoothly?
+    map.current.fitBounds(bounds, { padding: 100, duration: 2000 })
+
+  }, [goToFeature?.id]) // Only run when feature ID changes
+
 
   // =================================================================
   // CLUSTER LOGIC

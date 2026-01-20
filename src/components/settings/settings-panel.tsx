@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Wifi, Eye, Shield, Trash2, AlertTriangle, Moon, Sun } from 'lucide-react'
+import { X, Wifi, Eye, Shield, Trash2, AlertTriangle, Moon, Sun, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -38,12 +38,13 @@ export function SettingsPanel({ isOpen, onClose, section = 'appearance' }: Setti
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-2xl h-[80vh] bg-card rounded-xl shadow-2xl flex flex-col overflow-hidden border border-border">
         <div className="flex items-center justify-between p-4 border-b border-border">
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <h2 className="text-lg font-semibold text-foreground capitalize">
             {section === 'data' ? 'Data & Storage' : section}
           </h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="w-10"></div> {/* Spacer for alignment */}
         </div>
 
         {/* Content */}
@@ -59,11 +60,11 @@ export function SettingsPanel({ isOpen, onClose, section = 'appearance' }: Setti
                     <RadioGroup value={showDistance} onValueChange={(v) => setShowDistance(v as 'metric' | 'imperial')}>
                       <div className="flex items-center gap-4">
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="metric" id="metric" className="text-green-600 border-gray-300" />
+                          <RadioGroupItem value="metric" id="metric" className="text-green-600 border-gray-300 rounded-full" />
                           <Label htmlFor="metric">Metric (m)</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="imperial" id="imperial" className="text-green-600 border-gray-300" />
+                          <RadioGroupItem value="imperial" id="imperial" className="text-green-600 border-gray-300 rounded-full" />
                           <Label htmlFor="imperial">Imperial (ft)</Label>
                         </div>
                       </div>
@@ -80,15 +81,15 @@ export function SettingsPanel({ isOpen, onClose, section = 'appearance' }: Setti
                     <RadioGroup value={mapQuality} onValueChange={(v) => setMapQuality(v as 'low' | 'medium' | 'high')}>
                       <div className="space-y-2">
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="low" id="low" className="text-green-600 border-gray-300" />
+                          <RadioGroupItem value="low" id="low" className="text-green-600 border-gray-300 rounded-full" />
                           <Label htmlFor="low">Low (faster loading)</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="medium" id="medium" className="text-green-600 border-gray-300" />
+                          <RadioGroupItem value="medium" id="medium" className="text-green-600 border-gray-300 rounded-full" />
                           <Label htmlFor="medium">Medium (balanced)</Label>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="high" id="high" className="text-green-600 border-gray-300" />
+                          <RadioGroupItem value="high" id="high" className="text-green-600 border-gray-300 rounded-full" />
                           <Label htmlFor="high">High (best quality)</Label>
                         </div>
                       </div>

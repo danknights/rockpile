@@ -73,7 +73,51 @@ export function PhotoSection({ photos, onAddPhoto, onUpdatePhoto, onDeletePhoto,
     }
   }
 
+
+
   const handleCanvasMouseUp = () => {
+    if (currentAnnotation.length > 0) {
+      setAnnotations(prev => [...prev, JSON.stringify(currentAnnotation)])
+      setCurrentAnnotation([])
+    }
+  }
+
+  const handleCanvasTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isAnnotating) return
+    // Prevent scrolling
+    // e.preventDefault() // React SyntheticEvent doesn't support passive prevention well here, handled by touch-action css
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const touch = e.touches[0]
+    const x = touch.clientX - rect.left
+    const y = touch.clientY - rect.top
+    setCurrentAnnotation([{ x, y }])
+  }
+
+  const handleCanvasTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isAnnotating || currentAnnotation.length === 0) return
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const touch = e.touches[0]
+    const x = touch.clientX - rect.left
+    const y = touch.clientY - rect.top
+    setCurrentAnnotation(prev => [...prev, { x, y }])
+
+    // Draw
+    const ctx = canvasRef.current?.getContext('2d')
+    if (ctx && currentAnnotation.length > 0) {
+      const last = currentAnnotation[currentAnnotation.length - 1]
+      ctx.beginPath()
+      ctx.moveTo(last.x, last.y)
+      ctx.lineTo(x, y)
+      ctx.strokeStyle = '#ec4899' // Pink
+      ctx.lineWidth = 3
+      ctx.lineCap = 'round'
+      ctx.stroke()
+    }
+  }
+
+  const handleCanvasTouchEnd = () => {
     if (currentAnnotation.length > 0) {
       setAnnotations(prev => [...prev, JSON.stringify(currentAnnotation)])
       setCurrentAnnotation([])
@@ -96,7 +140,7 @@ export function PhotoSection({ photos, onAddPhoto, onUpdatePhoto, onDeletePhoto,
         ctx.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height)
         ctx.drawImage(img, 0, 0, canvasRef.current!.width, canvasRef.current!.height)
 
-        annotations.slice(0, -1).forEach(annotation => {
+        annotations.forEach(annotation => {
           const points = JSON.parse(annotation)
           if (points.length > 1) {
             ctx.beginPath()
@@ -108,6 +152,16 @@ export function PhotoSection({ photos, onAddPhoto, onUpdatePhoto, onDeletePhoto,
             ctx.stroke()
           }
         })
+        // Also draw current annotation
+        if (currentAnnotation.length > 1) {
+          ctx.beginPath()
+          ctx.moveTo(currentAnnotation[0].x, currentAnnotation[0].y)
+          currentAnnotation.forEach(p => ctx.lineTo(p.x, p.y))
+          ctx.strokeStyle = '#ec4899'
+          ctx.lineWidth = 3
+          ctx.lineCap = 'round'
+          ctx.stroke()
+        }
       }
       img.src = previewUrl
     }
