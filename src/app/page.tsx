@@ -84,6 +84,21 @@ export default function Home() {
   useEffect(() => {
     let watchId: string | null = null
 
+    const startFallbackSimulation = () => {
+      // Fall back to simulated location for development
+      setUserLocation({ lat: 47.783, lng: -91.687, heading: 45 })
+
+      // Simulate heading changes in dev mode
+      const interval = setInterval(() => {
+        setUserLocation(prev => prev ? {
+          ...prev,
+          heading: (prev.heading + 1) % 360,
+        } : null)
+      }, 100)
+
+      return interval
+    }
+
     const initLocation = async () => {
       try {
         // Check if we're on a native platform
@@ -93,7 +108,7 @@ export default function Home() {
           if (permission.location !== 'granted') {
             setLocationError('Location permission denied')
             // Fall back to simulated location
-            setUserLocation({ lat: 47.783, lng: -91.687, heading: 45 })
+            startFallbackSimulation()
             return
           }
         }
@@ -115,7 +130,13 @@ export default function Home() {
           { enableHighAccuracy: true },
           (position, err) => {
             if (err) {
-              console.error('Location watch error:', err)
+              console.error('Location watch error:', {
+                code: (err as any).code,
+                message: (err as any).message,
+                original: err
+              })
+              // If watch fails, trigger fallback simulation if not already started
+              startFallbackSimulation()
               return
             }
             if (position) {
@@ -129,18 +150,8 @@ export default function Home() {
         )
       } catch (err) {
         console.error('Location error:', err)
-        // Fall back to simulated location for development
-        setUserLocation({ lat: 47.783, lng: -91.687, heading: 45 })
-
-        // Simulate heading changes in dev mode
-        const interval = setInterval(() => {
-          setUserLocation(prev => prev ? {
-            ...prev,
-            heading: (prev.heading + 1) % 360,
-          } : null)
-        }, 100)
-
-        return () => clearInterval(interval)
+        const fallbackInterval = startFallbackSimulation()
+        return () => clearInterval(fallbackInterval)
       }
     }
 

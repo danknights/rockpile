@@ -226,18 +226,18 @@ button:active {
 }
 
 /* ========================================
-   MAPBOX OVERRIDES FOR MOBILE
+   MAPLIBRE OVERRIDES FOR MOBILE
    ======================================== */
-.mapboxgl-ctrl-group {
+.maplibregl-ctrl-group {
   background: rgba(23, 23, 23, 0.95) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-.mapboxgl-ctrl-group button {
+.maplibregl-ctrl-group button {
   background: transparent !important;
 }
 
-.mapboxgl-ctrl-group button + button {
+.maplibregl-ctrl-group button + button {
   border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 

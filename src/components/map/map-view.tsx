@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import mapboxgl from 'mapbox-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
+import maplibregl from 'maplibre-gl'
+import 'maplibre-gl/dist/maplibre-gl.css'
 import { Protocol } from 'pmtiles'
+// Removed mapbox-request-transformer imports
 import { IonIcon } from '@ionic/react'
 import { mapOutline } from 'ionicons/icons'
 import { publicLands } from '@/lib/mock-data'
@@ -19,27 +20,28 @@ interface MapViewProps {
 
 export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, userLocation }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
-  const map = useRef<mapboxgl.Map | null>(null)
-  const userMarkerRef = useRef<mapboxgl.Marker | null>(null)
+  const map = useRef<maplibregl.Map | null>(null)
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null)
   const routeLayerRef = useRef<string | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
 
-  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+  const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY
+
   const featuresUrl = 'https://f005.backblazeb2.com/file/rocky-static-assets/tiles/features.pmtiles'
   const coverageUrl = 'https://f005.backblazeb2.com/file/rocky-static-assets/coverage/scanned.pmtiles'
 
   // Register PMTiles protocol (only once)
   useEffect(() => {
     const protocol = new Protocol()
-    mapboxgl.addProtocol('pmtiles', protocol.tile)
+    maplibregl.addProtocol('pmtiles', protocol.tile)
     return () => {
-      mapboxgl.removeProtocol('pmtiles')
+      maplibregl.removeProtocol('pmtiles')
     }
   }, [])
 
-  // Construct Mapbox Filter expression from MapFilter state
-  const getMapboxFilter = useCallback(() => {
+  // Construct Filter expression from MapFilter state
+  const getMapFilterExpression = useCallback(() => {
     const filters: any[] = ['all']
 
     // Filter by Type
@@ -59,50 +61,43 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
       filters.push(['<=', ['get', 'height_m'], filter.maxHeight])
     }
 
-    // Handled in backend/tiles usually, but if properties exist:
-    // seenBy, favorites, etc. might not be in the vector tiles yet.
-    // For now, we only filter on properties we know exist in the tiles.
-    // The previous mock implementation did client-side filtering on all fields.
-    // We will assume the tiles have 'height_m', 'feature_type'.
-
-    // Filter 'not a rock' logic if it exists in tiles
-    // filters.push(['==', ['get', 'not_a_rock'], null]) 
-
     return filters
   }, [filter])
 
   useEffect(() => {
     if (!map.current || !mapLoaded) return
-    
+
     // Update filters for both layers
     try {
-        const filterExpr = getMapboxFilter()
-        if (map.current.getLayer('boulders')) {
-            map.current.setFilter('boulders', ['all', ['==', ['get', 'feature_type'], 'boulder'], ...filterExpr.slice(1)])
-        }
-        if (map.current.getLayer('cliffs')) {
-            map.current.setFilter('cliffs', ['all', ['==', ['get', 'feature_type'], 'cliff'], ...filterExpr.slice(1)])
-        }
+      const filterExpr = getMapFilterExpression()
+      if (map.current.getLayer('boulders')) {
+        map.current.setFilter('boulders', ['all', ['==', ['get', 'feature_type'], 'boulder'], ...filterExpr.slice(1)])
+      }
+      if (map.current.getLayer('cliffs')) {
+        map.current.setFilter('cliffs', ['all', ['==', ['get', 'feature_type'], 'cliff'], ...filterExpr.slice(1)])
+      }
     } catch (e) {
-        console.error("Error setting filter:", e)
+      console.error("Error setting filter:", e)
     }
 
-  }, [filter, mapLoaded, getMapboxFilter])
+  }, [filter, mapLoaded, getMapFilterExpression])
 
   useEffect(() => {
     if (!mapContainer.current || map.current) return
 
-    if (!token || token === 'pk.demo' || !token.startsWith('pk.')) {
-      setMapError('Missing or invalid Mapbox token. Please add NEXT_PUBLIC_MAPBOX_TOKEN to your environment variables.')
+    if (!apiKey) {
+      setMapError('Missing MapTiler API Key. Please add NEXT_PUBLIC_MAPTILER_KEY to your environment variables.')
       return
     }
 
-    mapboxgl.accessToken = token
-
     try {
-      map.current = new mapboxgl.Map({
+      // MapTiler Style URLs
+      const satelliteStyle = `https://api.maptiler.com/maps/hybrid/style.json?key=${apiKey}`;
+      const outdoorStyle = `https://api.maptiler.com/maps/outdoor-v2/style.json?key=${apiKey}`;
+
+      map.current = new maplibregl.Map({
         container: mapContainer.current,
-        style: showSatellite ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/outdoors-v12',
+        style: showSatellite ? satelliteStyle : outdoorStyle,
         center: [-91.68565, 47.78407],
         zoom: 13,
         pitch: showSatellite ? 60 : 0,
@@ -110,58 +105,80 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
         logoPosition: 'bottom-left',
         fadeDuration: 0,
         maxTileCacheSize: 50,
+        validateStyle: false,
       })
 
+      // Add these event listeners for debugging
       map.current.on('error', (e) => {
-        if (e.error?.message?.includes('access token')) {
-          setMapError('Invalid Mapbox access token. Please check your NEXT_PUBLIC_MAPBOX_TOKEN.')
+        console.error('Map error:', e.error?.message || e);
+      });
+
+      map.current.on('tileerror', (e) => {
+        console.error('Tile error:', e);
+      });
+
+      map.current.on('load', () => {
+        console.log('Map style fully loaded');
+      });
+
+      // Handle invalid key errors
+      map.current.on('error', (e) => {
+        if (e.error?.status === 403 || e.error?.message?.includes('Forbidden')) {
+          setMapError('Invalid MapTiler API Key. Please check your NEXT_PUBLIC_MAPTILER_KEY.')
         }
       })
 
       map.current.addControl(
-        new mapboxgl.ScaleControl({ maxWidth: 80, unit: 'imperial' }),
+        new maplibregl.ScaleControl({ maxWidth: 80, unit: 'imperial' }),
         'bottom-left'
       )
-      map.current.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right')
+      map.current.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
 
       map.current.on('load', () => {
         setMapLoaded(true)
         initializeLayers()
       })
     } catch (err) {
-      setMapError('Failed to initialize map. Please check your Mapbox token.')
+      setMapError('Failed to initialize map. Please check your API Key.')
     }
 
     return () => {
       map.current?.remove()
       map.current = null
     }
-  }, [token])
+  }, [apiKey])
 
   const initializeLayers = () => {
-      if (!map.current) return
+    if (!map.current) return
 
-      // Add Coverage Source
+    // Add Coverage Source
+    if (!map.current.getSource('coverage')) {
       map.current.addSource('coverage', {
-          type: 'vector',
-          url: 'pmtiles://' + coverageUrl
+        type: 'vector',
+        url: 'pmtiles://' + coverageUrl
       })
+    }
 
-      // Add Features Source
+    // Add Features Source
+    if (!map.current.getSource('features')) {
       map.current.addSource('features', {
-          type: 'vector',
-          url: 'pmtiles://' + featuresUrl
+        type: 'vector',
+        url: 'pmtiles://' + featuresUrl
       })
+    }
 
-      // Scanned Areas Layer
+    // Scanned Areas Layer
+    if (!map.current.getLayer('scanned-areas-fill')) {
       map.current.addLayer({
-          id: 'scanned-areas-fill',
-          type: 'fill',
-          source: 'coverage',
-          'source-layer': 'coverage',
-          paint: { 'fill-color': '#00cc00', 'fill-opacity': 0.15 }
+        id: 'scanned-areas-fill',
+        type: 'fill',
+        source: 'coverage',
+        'source-layer': 'coverage',
+        paint: { 'fill-color': '#00cc00', 'fill-opacity': 0.15 }
       })
-      
+    }
+
+    if (!map.current.getLayer('scanned-areas-outline')) {
       map.current.addLayer({
         id: 'scanned-areas-outline',
         type: 'line',
@@ -169,114 +186,119 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
         'source-layer': 'coverage',
         paint: { 'line-color': '#009900', 'line-width': 1, 'line-opacity': 0.4 }
       })
+    }
 
-      // Boulders Layer
+    // Boulders Layer
+    if (!map.current.getLayer('boulders')) {
       map.current.addLayer({
-          id: 'boulders',
-          type: 'circle',
-          source: 'features',
-          'source-layer': 'features',
-          filter: ['==', ['get', 'feature_type'], 'boulder'],
-          paint: {
-              'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 12, 6, 16, 10, 18, 14],
-              'circle-color': '#ff6600',
-              'circle-stroke-width': 2,
-              'circle-stroke-color': '#ffffff',
-              'circle-opacity': 1
-          }
+        id: 'boulders',
+        type: 'circle',
+        source: 'features',
+        'source-layer': 'features',
+        filter: ['==', ['get', 'feature_type'], 'boulder'],
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 12, 6, 16, 10, 18, 14],
+          'circle-color': '#ff6600',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+          'circle-opacity': 1
+        }
       })
+    }
 
-      // Cliffs Layer
+    // Cliffs Layer
+    if (!map.current.getLayer('cliffs')) {
       map.current.addLayer({
-          id: 'cliffs',
-          type: 'circle',
-          source: 'features',
-          'source-layer': 'features',
-          filter: ['==', ['get', 'feature_type'], 'cliff'],
-          paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 12, 6, 16, 10, 18, 14],
-            'circle-color': '#0066ff',
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#ffffff',
-            'circle-opacity': 1
+        id: 'cliffs',
+        type: 'circle',
+        source: 'features',
+        'source-layer': 'features',
+        filter: ['==', ['get', 'feature_type'], 'cliff'],
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 12, 6, 16, 10, 18, 14],
+          'circle-color': '#0066ff',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+          'circle-opacity': 1
+        }
+      })
+    }
+
+    // Handle Interactions
+    const interactionLayers = ['boulders', 'cliffs']
+
+    interactionLayers.forEach(layer => {
+      // Remove existing listeners to avoid duplicates if re-initializing
+      map.current?.off('click', layer)
+      map.current?.off('mouseenter', layer)
+      map.current?.off('mouseleave', layer)
+
+      map.current?.on('click', layer, (e) => {
+        if (e.features && e.features.length > 0) {
+          const f = e.features[0]
+          const props = f.properties || {}
+
+          const appFeature: Feature = {
+            id: props.id || f.id?.toString() || 'unknown',
+            type: props.feature_type === 'cliff' ? 'cliff' : 'boulder',
+            name: props.name || undefined,
+            latitude: props.lat ?? (f.geometry as any).coordinates[1],
+            longitude: props.lon ?? (f.geometry as any).coordinates[0],
+            elevation: props.elevation_m || 0,
+            height: props.height_m || 0,
+            length: props.length_m || 0,
+            width: props.width_m || 0,
+            distanceToRoad: 0,
+            bushwhackDistance: 0,
+            hardness: 0,
+            isFavorite: false,
+            isSeen: false,
+            seenByAnyone: true,
+            notARock: null,
+            modelUrl: props.mesh_url || undefined,
+            climbs: [],
+            photos: [],
+            comments: [],
+            links: [],
+            isPublished: true,
+            hasLocalEdits: false
           }
+
+          onFeatureSelect(appFeature)
+        }
       })
 
-      // Handle Interactions
-      const interactionLayers = ['boulders', 'cliffs']
-      
-      interactionLayers.forEach(layer => {
-          map.current?.on('click', layer, (e) => {
-              if (e.features && e.features.length > 0) {
-                  const f = e.features[0]
-                  const props = f.properties || {}
-                  
-                  // Map Vector properties to App Feature Interface
-                  const appFeature: Feature = {
-                      id: props.id || f.id?.toString() || 'unknown',
-                      type: props.feature_type === 'cliff' ? 'cliff' : 'boulder',
-                      name: props.name || undefined,
-                      // Vector tiles usually have geometry, but we want center point.
-                      // For points, geometry.coordinates is [lng, lat]
-                      // Note: Mapbox quantizes coords. Properties likely contain original high-res coords if the pipeline added them.
-                      // Fallback to geometry.
-                      latitude: props.lat ?? (f.geometry as any).coordinates[1],
-                      longitude: props.lon ?? (f.geometry as any).coordinates[0],
-                      elevation: props.elevation_m || 0,
-                      height: props.height_m || 0,
-                      length: props.length_m || 0,
-                      width: props.width_m || 0,
-                      distanceToRoad: 0, // Not in tiles yet
-                      bushwhackDistance: 0, // Not in tiles yet
-                      hardness: 0,
-                      isFavorite: false, // Local state not in tiles
-                      isSeen: false, // Local state not in tiles
-                      seenByAnyone: true,
-                      notARock: null,
-                      modelUrl: props.mesh_url || undefined,
-                      climbs: [],
-                      photos: [],
-                      comments: [],
-                      links: [],
-                      isPublished: true,
-                      hasLocalEdits: false
-                  }
-                  
-                  onFeatureSelect(appFeature)
-              }
-          })
-
-          map.current?.on('mouseenter', layer, () => {
-              if (map.current) map.current.getCanvas().style.cursor = 'pointer'
-          })
-
-          map.current?.on('mouseleave', layer, () => {
-            if (map.current) map.current.getCanvas().style.cursor = ''
-          })
+      map.current?.on('mouseenter', layer, () => {
+        if (map.current) map.current.getCanvas().style.cursor = 'pointer'
       })
 
-      // Add existing public lands (mock) if needed, or remove if PMTiles covers it
-      addPublicLandsLayer()
+      map.current?.on('mouseleave', layer, () => {
+        if (map.current) map.current.getCanvas().style.cursor = ''
+      })
+    })
+
+    addPublicLandsLayer()
   }
 
   useEffect(() => {
-    if (!map.current || !mapLoaded) return
+    if (!map.current || !mapLoaded || !apiKey) return
 
-    map.current.setStyle(
-      showSatellite ? 'mapbox://styles/mapbox/satellite-streets-v12' : 'mapbox://styles/mapbox/outdoors-v12'
-    )
+    const satelliteStyle = `https://api.maptiler.com/maps/hybrid/style.json?key=${apiKey}`;
+    const outdoorStyle = `https://api.maptiler.com/maps/outdoor-v2/style.json?key=${apiKey}`;
+
+    map.current.setStyle(showSatellite ? satelliteStyle : outdoorStyle)
 
     map.current.once('style.load', () => {
-      // Re-add sources and layers when style changes because Mapbox removes them
+      // Re-add sources and layers when style changes
       initializeLayers()
-      
+
       if (showSatellite) {
         map.current?.easeTo({ pitch: 60 })
       } else {
         map.current?.easeTo({ pitch: 0 })
       }
     })
-  }, [showSatellite, mapLoaded])
+  }, [showSatellite, mapLoaded, apiKey])
 
   const addPublicLandsLayer = () => {
     if (!map.current) return
@@ -357,7 +379,7 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
         </div>
       `
 
-      userMarkerRef.current = new mapboxgl.Marker(el)
+      userMarkerRef.current = new maplibregl.Marker({ element: el })
         .setLngLat([userLocation.lng, userLocation.lat])
         .addTo(map.current)
     }
@@ -404,7 +426,7 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
       },
     })
 
-    const bounds = new mapboxgl.LngLatBounds()
+    const bounds = new maplibregl.LngLatBounds()
     bounds.extend([userLocation.lng, userLocation.lat])
     bounds.extend([goToFeature.longitude, goToFeature.latitude])
     map.current.fitBounds(bounds, { padding: 100 })
@@ -420,12 +442,12 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
           <h2 className="text-xl font-semibold text-foreground mb-2">Map Configuration Required</h2>
           <p className="text-muted-foreground mb-4">{mapError}</p>
           <div className="bg-muted rounded-lg p-4 text-left">
-            <p className="text-sm text-muted-foreground mb-2">To get a free Mapbox token:</p>
+            <p className="text-sm text-muted-foreground mb-2">To get a free MapTiler Key:</p>
             <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-              <li>Go to mapbox.com and create an account</li>
-              <li>Navigate to your account tokens page</li>
-              <li>Copy your default public token</li>
-              <li>Add it as NEXT_PUBLIC_MAPBOX_TOKEN</li>
+              <li>Go to maptiler.com and create an account</li>
+              <li>Navigate to your account keys page</li>
+              <li>Copy your API key</li>
+              <li>Add it as NEXT_PUBLIC_MAPTILER_KEY</li>
             </ol>
           </div>
         </div>
