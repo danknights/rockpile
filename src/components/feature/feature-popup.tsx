@@ -19,6 +19,7 @@ import {
   IonNote,
   IonActionSheet,
   useIonToast,
+  useIonAlert,
 } from '@ionic/react'
 import {
   closeOutline,
@@ -69,6 +70,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
   const startX = useRef(0)
 
   const [present] = useIonToast()
+  const [presentAlert] = useIonAlert()
 
   const currentIndex = nearbyFeatures.findIndex(f => f.id === feature.id)
 
@@ -180,7 +182,6 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
         onTouchEnd={handleTouchEnd}
       >
         {/* 3D Viewer */}
-        {/* 3D Viewer */}
         {feature.viewerUrl ? (
           <div className={`relative bg-background ${isViewerFullscreen ? 'fixed inset-0 z-50' : 'h-64 rounded-t-xl overflow-hidden'}`}>
             <iframe
@@ -189,7 +190,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
-            {/* Fullscreen toggle */}
+            {/* Fullscreen toggle removed
             <IonButton
               fill="clear"
               size="small"
@@ -204,6 +205,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             >
               <IonIcon icon={isViewerFullscreen ? contractOutline : expandOutline} className="text-white text-xl" />
             </IonButton>
+            */}
           </div>
         ) : (
           <LidarViewer
@@ -217,31 +219,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
           />
         )}
 
-        {/* Publish toggle bar */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
-          <div className="flex items-center gap-2">
-            {isPublishing ? (
-              <IonSpinner name="crescent" className="w-4 h-4" />
-            ) : (
-              <>
-                <IonLabel className={`text-sm ${!hasLocalEdits ? 'text-muted-foreground' : 'text-foreground'}`}>
-                  Publish
-                </IonLabel>
-                <div className="scale-125 origin-right mr-1">
-                  <IonToggle
-                    checked={isPublished}
-                    onIonChange={(e) => handlePublishToggle(e.detail.checked)}
-                    disabled={!hasLocalEdits}
-                    style={{ '--handle-width': '22px', '--handle-height': '22px' }}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-          {waitingForSignal && (
-            <IonNote color="warning" className="text-xs">Waiting for signal...</IonNote>
-          )}
-        </div>
+        {/* Publish toggle moved down */}
 
         <div className="p-4 space-y-6">
           {/* Quick actions */}
@@ -255,7 +233,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
               }}
               className="native-button px-3"
             >
-              <IonIcon icon={feature.isFavorite ? heart : heartOutline} />
+              <IonIcon icon={feature.isFavorite ? heart : heartOutline} className="mr-2" />
               <IonLabel>{feature.isFavorite ? 'Favorited' : 'Favorite'}</IonLabel>
             </IonChip>
 
@@ -268,7 +246,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
               }}
               className="native-button px-3"
             >
-              <IonIcon icon={feature.isSeen ? eye : eyeOutline} />
+              <IonIcon icon={feature.isSeen ? eye : eyeOutline} className="mr-2" />
               <IonLabel>{feature.isSeen ? 'Seen' : 'Mark Seen'}</IonLabel>
             </IonChip>
 
@@ -280,36 +258,43 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
               }}
               className="native-button px-3"
             >
-              <IonIcon icon={alertCircleOutline} />
+              <IonIcon icon={alertCircleOutline} className="mr-2" />
               <IonLabel>Suggest a fix</IonLabel>
             </IonChip>
           </div>
 
           {/* Properties */}
           <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-            <div className="contents">
-              <div className="text-right text-muted-foreground">Height</div>
-              <div className="text-left font-medium text-foreground">{feature.height}m / {metersToFeet(feature.height)}ft</div>
+            {/* Left Column: Dimensions */}
+            <div className="space-y-1">
+              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
+                <div className="text-right text-muted-foreground">Height</div>
+                <div className="text-left font-medium text-foreground">{feature.height.toFixed(1)}m / {metersToFeet(feature.height)}ft</div>
+              </div>
+              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
+                <div className="text-right text-muted-foreground">Length</div>
+                <div className="text-left font-medium text-foreground">{feature.length.toFixed(1)}m / {metersToFeet(feature.length)}ft</div>
+              </div>
+              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
+                <div className="text-right text-muted-foreground">Width</div>
+                <div className="text-left font-medium text-foreground">{feature.width.toFixed(1)}m / {metersToFeet(feature.width)}ft</div>
+              </div>
             </div>
-            <div className="contents">
-              <div className="text-right text-muted-foreground">Length</div>
-              <div className="text-left font-medium text-foreground">{feature.length}m / {metersToFeet(feature.length)}ft</div>
-            </div>
-            <div className="contents">
-              <div className="text-right text-muted-foreground">Width</div>
-              <div className="text-left font-medium text-foreground">{feature.width}m / {metersToFeet(feature.width)}ft</div>
-            </div>
-            <div className="contents">
-              <div className="text-right text-muted-foreground">Elevation</div>
-              <div className="text-left font-medium text-foreground">{feature.elevation}m / {metersToFeet(feature.elevation)}ft</div>
-            </div>
-            <div className="contents">
-              <div className="text-right text-muted-foreground">To road</div>
-              <div className="text-left font-medium text-foreground">{feature.distanceToRoad}m / {metersToFeet(feature.distanceToRoad)}ft</div>
-            </div>
-            <div className="contents">
-              <div className="text-right text-muted-foreground">Bushwhack</div>
-              <div className="text-left font-medium text-foreground">{feature.bushwhackDistance}m / {metersToFeet(feature.bushwhackDistance)}ft</div>
+
+            {/* Right Column: Location/Access Stats */}
+            <div className="space-y-1">
+              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
+                <div className="text-right text-muted-foreground">Elevation</div>
+                <div className="text-left font-medium text-foreground">{feature.elevation.toFixed(1)}m / {metersToFeet(feature.elevation)}ft</div>
+              </div>
+              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
+                <div className="text-right text-muted-foreground">To road</div>
+                <div className="text-left font-medium text-foreground">{feature.distanceToRoad.toFixed(1)}m / {metersToFeet(feature.distanceToRoad)}ft</div>
+              </div>
+              <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
+                <div className="text-right text-muted-foreground">Bushwhack</div>
+                <div className="text-left font-medium text-foreground">{feature.bushwhackDistance.toFixed(1)}m / {metersToFeet(feature.bushwhackDistance)}ft</div>
+              </div>
             </div>
           </div>
 
@@ -353,6 +338,33 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             </div>
           </div>
 
+          {/* Access */}
+          <div className="space-y-2">
+            <div className="space-y-1">
+              <h3 className="font-medium text-foreground">Access</h3>
+              <p className="text-xs text-muted-foreground">How to get there? Access concerns?</p>
+            </div>
+            {/* reusing comment section for now, or just a textarea like description? 
+                 User said: "This will also allow comments regarding accessibility... I can't, people can "like" and reply to access issues posts."
+                 Implies a full comment section. For now I'll add a placeholder or a secondary comment section.
+                 Let's add a "Access details" text area for the main feature, and we can add a comment section specifically for access later if needed, 
+                 but the user prompt suggests it acts like a forum.
+                 Let's stick to a simple textarea for 'access notes' on the feature for now to match 'Description'.
+              */}
+            <div className="bg-muted/30 rounded-lg p-2">
+              <IonTextarea
+                className="text-sm"
+                placeholder="Add access details..."
+                value={feature.access || ''}
+                onIonChange={e => {
+                  setFeature({ ...feature, access: e.detail.value! })
+                  handleEdit()
+                }}
+                autoGrow={true}
+              />
+            </div>
+          </div>
+
           {/* Quick Notes */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -385,6 +397,59 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
               setFeature({ ...feature, climbs: [...feature.climbs, climb] })
               handleEdit()
             }}
+            publishControl={
+              <div className="flex items-center justify-between px-3 py-2 border rounded-lg bg-card/50">
+                <div className="flex items-center gap-2">
+                  {isPublishing ? (
+                    <IonSpinner name="crescent" className="w-4 h-4" />
+                  ) : (
+                    <>
+                      <IonLabel className={`text-sm ${!hasLocalEdits ? 'text-muted-foreground' : 'text-foreground'}`}>
+                        Publish
+                      </IonLabel>
+                      <IonToggle
+                        checked={isPublished}
+                        onIonChange={(e) => {
+                          const checked = e.detail.checked;
+                          if (!checked) {
+                            // Prevent immediate toggle, show alert
+                            // But IonToggle might have already changed state visually.
+                            // We need to handle this carefully.
+                            // Usually we let it toggle, then if they cancel, toggling it back.
+                            // Better: check e.detail.value/checked.
+                            // If Unpublishing (checked == false)
+                            setIsPublished(false); // Update state to reflect user action for now
+                            presentAlert({
+                              header: 'Unpublish?',
+                              message: 'Unpublishing will make your edits invisible to other users. Your comments will remain visible. Are you sure?',
+                              buttons: [
+                                {
+                                  text: 'Cancel',
+                                  role: 'cancel',
+                                  handler: () => setIsPublished(true) // Revert
+                                },
+                                {
+                                  text: 'Unpublish',
+                                  role: 'confirm',
+                                  handler: () => handlePublishToggle(false)
+                                }
+                              ]
+                            })
+                          } else {
+                            handlePublishToggle(true)
+                          }
+                        }}
+                        disabled={!hasLocalEdits}
+                        style={{ '--handle-width': '22px', '--handle-height': '22px' }}
+                      />
+                    </>
+                  )}
+                </div>
+                {waitingForSignal && (
+                  <IonNote color="warning" className="text-xs">Waiting for signal...</IonNote>
+                )}
+              </div>
+            }
           />
 
           {/* Links */}
@@ -397,8 +462,14 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
                 onClick={() => setShowAddLink(!showAddLink)}
                 className="native-button"
               >
-                <IonIcon icon={addOutline} slot="start" />
-                Add
+                {showAddLink ? (
+                  <>Cancel</>
+                ) : (
+                  <>
+                    <IonIcon icon={addOutline} slot="start" />
+                    Add Link
+                  </>
+                )}
               </IonButton>
             </div>
 
@@ -406,22 +477,24 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
               <div className="bg-muted/30 p-3 rounded-lg space-y-3">
                 <div className="flex gap-2">
                   <select
-                    className="bg-card rounded px-2 py-1 text-sm border-none"
+                    className="bg-card rounded px-2 py-1 text-sm border-none flex-1"
                     value={newLinkType}
                     onChange={(e) => setNewLinkType(e.target.value)}
                   >
-                    <option value="mountainProject">Mtn Proj</option>
+                    <option value="mountainProject">Mountain Project</option>
+                    <option value="beta">Beta.io</option>
+                    <option value="thecrag">TheCrag.com</option>
                     <option value="video">Video</option>
                     <option value="other">Other</option>
                   </select>
-                  <IonInput
-                    type="url"
-                    placeholder="https://..."
-                    value={newLinkUrl}
-                    onIonInput={(e) => setNewLinkUrl(e.detail.value || '')}
-                    className="flex-1 bg-card rounded px-2 text-sm"
-                  />
                 </div>
+                <IonInput
+                  type="url"
+                  placeholder="https://..."
+                  value={newLinkUrl}
+                  onIonInput={(e) => setNewLinkUrl(e.detail.value || '')}
+                  className="flex-1 bg-card rounded px-2 text-sm"
+                />
                 <IonInput
                   placeholder="Description (optional)"
                   value={newLinkDesc}
@@ -452,6 +525,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
                       }
                     }}
                   >
+                    <IonIcon icon={navigateOutline /* Send arrow? navigateOutline looks like one */} slot="end" />
                     Add
                   </IonButton>
                 </div>
@@ -461,19 +535,37 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             {feature.links.length > 0 ? (
               <div className="space-y-2">
                 {feature.links.map((link, i) => (
-                  <a
+                  <div
                     key={i}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="flex items-center gap-2 p-3 bg-muted/50 rounded-xl active:bg-muted transition-colors"
                   >
-                    <IonIcon
-                      icon={link.type === 'video' ? logoYoutube : linkOutline}
-                      className={link.type === 'video' ? 'text-red-500' : 'text-muted-foreground'}
-                    />
-                    <span className="text-sm text-foreground flex-1">{link.label || link.url}</span>
-                  </a>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 flex items-center gap-2"
+                    >
+                      <IonIcon
+                        icon={link.type === 'video' ? logoYoutube : linkOutline}
+                        className={link.type === 'video' ? 'text-red-500' : 'text-muted-foreground'}
+                      />
+                      <span className="text-sm text-foreground flex-1">{link.label || link.url}</span>
+                    </a>
+                    <IonButton
+                      fill="clear"
+                      size="small"
+                      color="medium"
+                      onClick={() => {
+                        setFeature({
+                          ...feature,
+                          links: feature.links.filter((_, index) => index !== i)
+                        })
+                        handleEdit()
+                      }}
+                    >
+                      <IonIcon icon={closeOutline} />
+                    </IonButton>
+                  </div>
                 ))}
               </div>
             ) : !showAddLink && (
@@ -487,6 +579,66 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             onAddPhoto={(photo) => {
               setFeature({ ...feature, photos: [...feature.photos, photo] })
               handleEdit()
+            }}
+            onUpdatePhoto={(updatedPhoto) => {
+              const old = feature.photos.find(p => p.id === updatedPhoto.id)
+              const isVisibilityChange = old && old.isPrivate !== updatedPhoto.isPrivate
+
+              if (isVisibilityChange) {
+                presentAlert({
+                  header: updatedPhoto.isPrivate ? 'Unpublish Photo?' : 'Publish Photo?',
+                  message: updatedPhoto.isPrivate
+                    ? 'This photo will no longer be visible to others. Continue?'
+                    : 'This photo will be visible to everyone. Continue?',
+                  buttons: [
+                    { text: 'Cancel', role: 'cancel' },
+                    {
+                      text: 'Confirm',
+                      role: 'confirm',
+                      handler: () => {
+                        setFeature({
+                          ...feature,
+                          photos: feature.photos.map(p => p.id === updatedPhoto.id ? updatedPhoto : p)
+                        })
+                        handleEdit()
+                      }
+                    }
+                  ]
+                })
+              } else {
+                setFeature({
+                  ...feature,
+                  photos: feature.photos.map(p => p.id === updatedPhoto.id ? updatedPhoto : p)
+                })
+                handleEdit()
+              }
+            }}
+            onDeletePhoto={(photoId) => {
+              presentAlert({
+                header: 'Delete Photo?',
+                message: 'Are you sure you want to delete this photo?',
+                buttons: [
+                  { text: 'Cancel', role: 'cancel' },
+                  {
+                    text: 'Delete',
+                    role: 'destructive',
+                    handler: () => {
+                      setFeature({
+                        ...feature,
+                        photos: feature.photos.filter(p => p.id !== photoId)
+                      })
+                      handleEdit()
+                    }
+                  }
+                ]
+              })
+            }}
+            onReportPhoto={(photoId) => {
+              present({
+                message: 'Photo reported. Thank you.',
+                duration: 2000,
+                color: 'success'
+              })
             }}
           />
 

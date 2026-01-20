@@ -6,9 +6,11 @@ export interface Climb {
   id: string
   name?: string
   rating: string
-  ratingSystem: 'v-scale' | 'yds'
+  ratingSystem: 'v-scale' | 'yds' | 'french'
   stars: number
   status: ClimbStatus
+  type?: 'boulder' | 'sport' | 'trad' | 'top-rope'
+  isPrivate?: boolean
   photoId?: string
   userId: string
   createdAt: string
@@ -35,6 +37,7 @@ export interface Photo {
   note?: string
   annotations?: string
   createdAt: string
+  isPrivate?: boolean
 }
 
 export interface Feature {
@@ -64,6 +67,7 @@ export interface Feature {
   hasLocalEdits: boolean
   needsRefinement?: 'missing' | 'extra' | 'both' | null
   description?: string
+  access?: string
   quickNotes?: string
 }
 

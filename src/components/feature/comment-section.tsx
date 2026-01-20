@@ -14,7 +14,12 @@ interface CommentSectionProps {
 
 function CommentItem({
   comment,
+  activeReplyId,
+  replyText,
+  setReplyText,
   onReply,
+  onCancelReply,
+  onSubmitReply,
   onLike,
   onEdit,
   onDelete,
@@ -22,7 +27,12 @@ function CommentItem({
   isReply = false
 }: {
   comment: Comment
-  onReply: (parentId: string) => void
+  activeReplyId: string | null
+  replyText: string
+  setReplyText: (text: string) => void
+  onReply: (id: string) => void
+  onCancelReply: () => void
+  onSubmitReply: () => void
   onLike: (id: string) => void
   onEdit: (id: string, newText: string) => void
   onDelete: (id: string) => void
@@ -33,6 +43,7 @@ function CommentItem({
   const [isEditing, setIsEditing] = useState(false)
   const [editText, setEditText] = useState(comment.text)
   const isOwn = comment.userId === 'user-1'
+  const isReplying = activeReplyId === comment.id
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
@@ -80,6 +91,7 @@ function CommentItem({
         ) : (
           <p className="text-sm text-foreground mt-1">{comment.text}</p>
         )}
+
         <div className="flex items-center gap-3 mt-2">
           <button
             className={`flex items-center gap-1 text-xs ${comment.likedByUser ? 'text-primary' : 'text-muted-foreground'} hover:text-primary transition-colors`}
@@ -125,6 +137,28 @@ function CommentItem({
           </DropdownMenu>
         </div>
 
+        {/* Inline Reply Input */}
+        {isReplying && (
+          <div className="mt-3 bg-muted/30 p-2 rounded-lg border border-border/50">
+            <textarea
+              placeholder={`Replying to ${comment.userName}...`}
+              className="w-full text-sm p-2 border border-border rounded-md bg-card text-foreground placeholder:text-muted-foreground resize-none"
+              rows={2}
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2 mt-2">
+              <Button size="sm" variant="ghost" onClick={onCancelReply}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={onSubmitReply}>
+                Reply
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Replies */}
         {comment.replies.length > 0 && (
           <div className="space-y-3 mt-3">
@@ -132,7 +166,12 @@ function CommentItem({
               <CommentItem
                 key={reply.id}
                 comment={reply}
+                activeReplyId={activeReplyId}
+                replyText={replyText}
+                setReplyText={setReplyText}
                 onReply={onReply}
+                onCancelReply={onCancelReply}
+                onSubmitReply={onSubmitReply}
                 onLike={onLike}
                 onEdit={onEdit}
                 onDelete={onDelete}
@@ -148,44 +187,58 @@ function CommentItem({
 }
 
 export function CommentSection({ comments, onCommentsChange }: CommentSectionProps) {
-  const [newComment, setNewComment] = useState('')
+  const [rootCommentText, setRootCommentText] = useState('')
+  const [replyText, setReplyText] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
 
-  const handleSubmit = () => {
-    if (!newComment.trim()) return
+  const handleRootSubmit = () => {
+    if (!rootCommentText.trim()) return
 
     const newCommentObj: Comment = {
       id: `comment-${Date.now()}`,
       userId: 'user-1',
       userName: 'Current User',
       userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=current',
-      text: newComment,
+      text: rootCommentText,
       createdAt: new Date().toISOString(),
       likes: 0,
       likedByUser: false,
       replies: [],
     }
 
-    if (replyingTo) {
-      // Add as reply
-      const updateReplies = (list: Comment[]): Comment[] => {
-        return list.map(c => {
-          if (c.id === replyingTo) {
-            return { ...c, replies: [...c.replies, newCommentObj] }
-          }
-          if (c.replies.length > 0) {
-            return { ...c, replies: updateReplies(c.replies) }
-          }
-          return c
-        })
-      }
-      onCommentsChange(updateReplies(comments))
-    } else {
-      // Add as root comment
-      onCommentsChange([...comments, newCommentObj])
+    onCommentsChange([...comments, newCommentObj])
+    setRootCommentText('')
+  }
+
+  const handleReplySubmit = () => {
+    if (!replyText.trim() || !replyingTo) return
+
+    const newReplyObj: Comment = {
+      id: `comment-${Date.now()}`,
+      userId: 'user-1',
+      userName: 'Current User',
+      userAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=current',
+      text: replyText,
+      createdAt: new Date().toISOString(),
+      likes: 0,
+      likedByUser: false,
+      replies: [],
     }
 
-    setNewComment('')
+    const addReplyRecursively = (items: Comment[]): Comment[] => {
+      return items.map(item => {
+        if (item.id === replyingTo) {
+          return { ...item, replies: [...item.replies, newReplyObj] }
+        }
+        if (item.replies.length > 0) {
+          return { ...item, replies: addReplyRecursively(item.replies) }
+        }
+        return item
+      })
+    }
+
+    onCommentsChange(addReplyRecursively(comments))
+    setReplyText('')
     setReplyingTo(null)
   }
 
@@ -208,85 +261,71 @@ export function CommentSection({ comments, onCommentsChange }: CommentSectionPro
     onCommentsChange(updateLikes(comments))
   }
 
-  const handleFlag = (id: string, reason: string) => {
-    console.log('Flag comment:', id, reason)
-  }
-
   const handleEdit = (id: string, newText: string) => {
-    const updateComment = (list: Comment[]): Comment[] => {
+    const updateText = (list: Comment[]): Comment[] => {
       return list.map(c => {
-        if (c.id === id) return { ...c, text: newText }
-        if (c.replies.length > 0) return { ...c, replies: updateComment(c.replies) }
+        if (c.id === id) {
+          return { ...c, text: newText }
+        }
+        if (c.replies.length > 0) {
+          return { ...c, replies: updateText(c.replies) }
+        }
         return c
       })
     }
-    onCommentsChange(updateComment(comments))
+    onCommentsChange(updateText(comments))
   }
 
   const handleDelete = (id: string) => {
-    const removeComment = (list: Comment[]): Comment[] => {
+    const deleteComment = (list: Comment[]): Comment[] => {
       return list.filter(c => c.id !== id).map(c => ({
         ...c,
-        replies: removeComment(c.replies)
+        replies: deleteComment(c.replies)
       }))
     }
-    onCommentsChange(removeComment(comments))
+    onCommentsChange(deleteComment(comments))
   }
 
   return (
     <div className="space-y-4">
       <h3 className="font-medium text-foreground">Comments ({comments.length})</h3>
 
-      {/* Add comment */}
-      <div className="flex gap-3">
-        <Avatar className="h-8 w-8 flex-shrink-0">
-          <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=current" />
-          <AvatarFallback>U</AvatarFallback>
-        </Avatar>
-        <div className="flex-1 flex gap-2">
-          <input
-            type="text"
-            placeholder={replyingTo ? 'Write a reply...' : 'Add a comment...'}
-            className="flex-1 px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground"
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-          />
-          <Button size="icon" onClick={handleSubmit} disabled={!newComment.trim()}>
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {replyingTo && (
-        <div className="ml-11 text-xs text-muted-foreground">
-          Replying to comment{' '}
-          <button className="text-primary hover:underline" onClick={() => setReplyingTo(null)}>
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {/* Comments list */}
       <div className="space-y-4">
         {comments.map((comment) => (
           <CommentItem
             key={comment.id}
             comment={comment}
+            activeReplyId={replyingTo}
+            replyText={replyText}
+            setReplyText={setReplyText}
             onReply={setReplyingTo}
+            onCancelReply={() => { setReplyingTo(null); setReplyText('') }}
+            onSubmitReply={handleReplySubmit}
             onLike={handleLike}
             onEdit={handleEdit}
             onDelete={handleDelete}
-            onFlag={handleFlag}
+            onFlag={(id, reason) => console.log('Flagged', id, reason)}
           />
         ))}
       </div>
 
       {comments.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          No comments yet. Be the first to comment!
-        </p>
+        <p className="text-sm text-muted-foreground text-center py-4">No comments yet. Be the first to comment!</p>
       )}
+
+      {/* Root Comment Input */}
+      <div className="flex gap-2">
+        <textarea
+          placeholder="Add a comment..."
+          className="flex-1 min-h-[40px] max-h-[120px] p-2 text-sm bg-muted/50 border border-border rounded-md resize-none focus:bg-background transition-colors"
+          rows={1}
+          value={rootCommentText}
+          onChange={(e) => setRootCommentText(e.target.value)}
+        />
+        <Button size="icon" disabled={!rootCommentText.trim()} onClick={handleRootSubmit}>
+          <Send className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   )
 }
