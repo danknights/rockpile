@@ -247,7 +247,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
               className="native-button px-3"
             >
               <IonIcon icon={feature.isSeen ? eye : eyeOutline} className="mr-2" />
-              <IonLabel>{feature.isSeen ? 'Seen' : 'Mark Seen'}</IonLabel>
+              <IonLabel>{feature.isSeen ? 'Seen' : 'Seen'}</IonLabel>
             </IonChip>
 
             <IonChip
@@ -269,15 +269,15 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             <div className="space-y-1">
               <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
                 <div className="text-right text-muted-foreground">Height</div>
-                <div className="text-left font-medium text-foreground">{feature.height.toFixed(1)}m / {metersToFeet(feature.height)}ft</div>
+                <div className="text-left font-medium text-foreground">{feature.height.toFixed(1)}m</div>
               </div>
               <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
                 <div className="text-right text-muted-foreground">Length</div>
-                <div className="text-left font-medium text-foreground">{feature.length.toFixed(1)}m / {metersToFeet(feature.length)}ft</div>
+                <div className="text-left font-medium text-foreground">{feature.length.toFixed(1)}m</div>
               </div>
               <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
                 <div className="text-right text-muted-foreground">Width</div>
-                <div className="text-left font-medium text-foreground">{feature.width.toFixed(1)}m / {metersToFeet(feature.width)}ft</div>
+                <div className="text-left font-medium text-foreground">{feature.width.toFixed(1)}m</div>
               </div>
             </div>
 
@@ -285,15 +285,15 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             <div className="space-y-1">
               <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
                 <div className="text-right text-muted-foreground">Elevation</div>
-                <div className="text-left font-medium text-foreground">{feature.elevation.toFixed(1)}m / {metersToFeet(feature.elevation)}ft</div>
+                <div className="text-left font-medium text-foreground">{feature.elevation.toFixed(1)}m</div>
               </div>
               <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
                 <div className="text-right text-muted-foreground">To road</div>
-                <div className="text-left font-medium text-foreground">{feature.distanceToRoad.toFixed(1)}m / {metersToFeet(feature.distanceToRoad)}ft</div>
+                <div className="text-left font-medium text-foreground">{feature.distanceToRoad.toFixed(1)}m</div>
               </div>
               <div className="grid grid-cols-[1fr_auto] gap-2 items-center">
                 <div className="text-right text-muted-foreground">Bushwhack</div>
-                <div className="text-left font-medium text-foreground">{feature.bushwhackDistance.toFixed(1)}m / {metersToFeet(feature.bushwhackDistance)}ft</div>
+                <div className="text-left font-medium text-foreground">{feature.bushwhackDistance.toFixed(1)}m</div>
               </div>
             </div>
           </div>
@@ -329,8 +329,8 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
                 className="text-sm"
                 placeholder="Add a description..."
                 value={feature.description}
-                onIonChange={e => {
-                  setFeature({ ...feature, description: e.detail.value! })
+                onIonInput={e => {
+                  setFeature(prev => ({ ...prev, description: e.detail.value! }))
                   handleEdit()
                 }}
                 autoGrow={true}
@@ -356,8 +356,8 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
                 className="text-sm"
                 placeholder="Add access details..."
                 value={feature.access || ''}
-                onIonChange={e => {
-                  setFeature({ ...feature, access: e.detail.value! })
+                onIonInput={e => {
+                  setFeature(prev => ({ ...prev, access: e.detail.value! }))
                   handleEdit()
                 }}
                 autoGrow={true}
@@ -380,8 +380,8 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
                 className="text-sm"
                 placeholder="Private notes..."
                 value={feature.quickNotes}
-                onIonChange={e => {
-                  setFeature({ ...feature, quickNotes: e.detail.value! })
+                onIonInput={e => {
+                  setFeature(prev => ({ ...prev, quickNotes: e.detail.value! }))
                   handleEdit()
                 }}
                 autoGrow={true}
@@ -400,50 +400,52 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             publishControl={
               <div className="flex items-center justify-between px-3 py-2 border rounded-lg bg-card/50">
                 <div className="flex items-center gap-2">
-                  {isPublishing ? (
-                    <IonSpinner name="crescent" className="w-4 h-4" />
-                  ) : (
-                    <>
-                      <IonLabel className={`text-sm ${!hasLocalEdits ? 'text-muted-foreground' : 'text-foreground'}`}>
-                        Publish
-                      </IonLabel>
-                      <IonToggle
-                        checked={isPublished}
-                        onIonChange={(e) => {
-                          const checked = e.detail.checked;
-                          if (!checked) {
-                            // Prevent immediate toggle, show alert
-                            // But IonToggle might have already changed state visually.
-                            // We need to handle this carefully.
-                            // Usually we let it toggle, then if they cancel, toggling it back.
-                            // Better: check e.detail.value/checked.
-                            // If Unpublishing (checked == false)
-                            setIsPublished(false); // Update state to reflect user action for now
-                            presentAlert({
-                              header: 'Unpublish?',
-                              message: 'Unpublishing will make your edits invisible to other users. Your comments will remain visible. Are you sure?',
-                              buttons: [
-                                {
-                                  text: 'Cancel',
-                                  role: 'cancel',
-                                  handler: () => setIsPublished(true) // Revert
-                                },
-                                {
-                                  text: 'Unpublish',
-                                  role: 'confirm',
-                                  handler: () => handlePublishToggle(false)
-                                }
-                              ]
-                            })
-                          } else {
-                            handlePublishToggle(true)
-                          }
-                        }}
-                        disabled={!hasLocalEdits}
-                        style={{ '--handle-width': '22px', '--handle-height': '22px' }}
+                  <IonLabel className={`text-sm ${!hasLocalEdits ? 'text-muted-foreground' : 'text-foreground'}`}>
+                    {isPublished ? 'Published' : 'Private'}
+                  </IonLabel>
+                  <IonButton
+                    fill="clear"
+                    onClick={() => {
+                      if (isPublished) {
+                        presentAlert({
+                          header: 'Unpublish?',
+                          message: 'Unpublishing will make your edits invisible to other users. Your comments will remain visible. Are you sure?',
+                          buttons: [
+                            { text: 'Cancel', role: 'cancel' },
+                            {
+                              text: 'Unpublish',
+                              role: 'confirm',
+                              handler: () => handlePublishToggle(false)
+                            }
+                          ]
+                        })
+                      } else {
+                        presentAlert({
+                          header: 'Publish?',
+                          message: 'Publishing will make your edits visible to everyone. Are you sure?',
+                          buttons: [
+                            { text: 'Cancel', role: 'cancel' },
+                            {
+                              text: 'Publish',
+                              role: 'confirm',
+                              handler: () => handlePublishToggle(true)
+                            }
+                          ]
+                        })
+                      }
+                    }}
+                    disabled={!hasLocalEdits && !isPublished} // Can always unpublish if published? or only if local edits? Logic: "Unpublish" available always if published. "Publish" only if edits? assuming standard logic.
+                  // For now, enable if it is not loading.
+                  >
+                    {isPublishing ? (
+                      <IonSpinner name="crescent" className="w-5 h-5" />
+                    ) : (
+                      <IonIcon
+                        icon={isPublished ? eye : eyeOutline}
+                        className={`text-xl ${isPublished ? 'text-green-500' : 'text-muted-foreground'}`}
                       />
-                    </>
-                  )}
+                    )}
+                  </IonButton>
                 </div>
                 {waitingForSignal && (
                   <IonNote color="warning" className="text-xs">Waiting for signal...</IonNote>
@@ -654,7 +656,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
           {/* Bottom padding for safe area */}
           <div style={{ height: 'env(safe-area-inset-bottom, 16px)' }} />
         </div>
-      </IonContent>
+      </IonContent >
 
       <IonActionSheet
         isOpen={showFixSheet}

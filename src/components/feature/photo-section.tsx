@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useState, useRef, useEffect } from 'react'
-import { Camera, Plus, Check, Undo, Redo, X, Eye, EyeOff, MoreHorizontal, Flag, Trash2, PenTool } from 'lucide-react'
+import { Camera, Plus, Check, Undo, Redo, X, Eye, EyeOff, MoreHorizontal, Flag, Trash2, PenTool, Copy, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import type { Photo } from '@/lib/types'
@@ -120,9 +120,13 @@ export function PhotoSection({ photos, onAddPhoto, onUpdatePhoto, onDeletePhoto,
       img.crossOrigin = 'anonymous'
       img.onload = () => {
         if (ctx && canvasRef.current) {
-          canvasRef.current.width = 400
-          canvasRef.current.height = 300
-          ctx.drawImage(img, 0, 0, 400, 300)
+          // Responsive sizing based on image aspect ratio, max height 50vh (approx 300-400px on mobile)
+          const MAX_HEIGHT = window.innerHeight * 0.5;
+          const scale = Math.min(1, MAX_HEIGHT / img.height);
+
+          canvasRef.current.width = img.width * scale
+          canvasRef.current.height = img.height * scale
+          ctx.drawImage(img, 0, 0, canvasRef.current.width, canvasRef.current.height)
         }
       }
       img.src = previewUrl
@@ -215,11 +219,8 @@ export function PhotoSection({ photos, onAddPhoto, onUpdatePhoto, onDeletePhoto,
               onClick={() => setIsAnnotating(!isAnnotating)}
               className={isAnnotating ? 'bg-pink-500 hover:bg-pink-600' : ''}
             >
-              {isAnnotating ? 'Drawing Active' : 'Draw on Photo'}
+              {isAnnotating ? 'Drawing Active' : 'Draw annotations on the image'}
             </Button>
-            <span className="text-xs text-muted-foreground">
-              {isAnnotating ? 'Draw with pink marker' : 'Add route lines'}
-            </span>
           </div>
 
           <textarea
@@ -241,7 +242,7 @@ export function PhotoSection({ photos, onAddPhoto, onUpdatePhoto, onDeletePhoto,
 
             <div className="flex gap-2">
               <Button variant="outline" onClick={handleCancel}>Cancel</Button>
-              <Button onClick={handleSave}>Save Photo</Button>
+              <Button onClick={handleSave} className="px-6">Save Photo</Button>
             </div>
           </div>
         </div>
@@ -299,6 +300,27 @@ export function PhotoSection({ photos, onAddPhoto, onUpdatePhoto, onDeletePhoto,
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
+                        onClick={() => {
+                          // Annotation Copy Workflow
+                          if (confirm("This will create a new copy of the image for you to annotate. Proceed?")) {
+                            setPreviewUrl(photo.url)
+                            setIsAdding(true)
+                            setIsAnnotating(true)
+                            // Note: We start fresh with annotations on the NEW copy. 
+                            // To preserve existing annotations, we'd need to parse `photo.annotations` 
+                            // and set `setAnnotations` state.
+                            if (photo.annotations) {
+                              try {
+                                setAnnotations(JSON.parse(photo.annotations))
+                              } catch (e) { console.error("Failed to parse annotations", e) }
+                            }
+                          }
+                        }}
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Annotate
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => onDeletePhoto?.(photo.id)}
                       >
@@ -327,7 +349,7 @@ export function PhotoSection({ photos, onAddPhoto, onUpdatePhoto, onDeletePhoto,
                 >
                   <img src={photo.thumbnailUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover" />
                   <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-2 py-1 text-[10px] text-white truncate">
-                    {photo.userName}
+                    {photo.note || photo.userName}
                   </div>
                 </button>
 
@@ -361,29 +383,37 @@ export function PhotoSection({ photos, onAddPhoto, onUpdatePhoto, onDeletePhoto,
       {/* Photo viewer modal */}
       {selectedPhoto && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+          className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-sm"
           onClick={() => setSelectedPhoto(null)}
         >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 right-4 text-white"
-            onClick={() => setSelectedPhoto(null)}
-          >
-            <X className="h-6 w-6" />
-          </Button>
-          <img
-            src={selectedPhoto.url || "/placeholder.svg"}
-            alt=""
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-          {selectedPhoto.note && (
-            <div className="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-sm rounded-lg p-3">
-              <p className="text-white text-sm">{selectedPhoto.note}</p>
-              <p className="text-white/60 text-xs mt-1">by {selectedPhoto.userName}</p>
+          <div className="flex-1 relative flex items-center justify-center p-4 overflow-hidden">
+            <img
+              src={selectedPhoto.url || "/placeholder.svg"}
+              alt=""
+              className="max-w-full max-h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              className="absolute top-4 right-4 rounded-full opacity-90 shadow-lg"
+              onClick={(e) => { e.stopPropagation(); setSelectedPhoto(null); }}
+            >
+              <ChevronUp className="h-4 w-4 mr-1" />
+              Close
+            </Button>
+          </div>
+
+          {/* Description Section */}
+          <div className="bg-card border-t border-border p-4 pb-8 space-y-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sm">{selectedPhoto.userName}</span>
+              <span className="text-xs text-muted-foreground">{new Date(selectedPhoto.createdAt).toLocaleDateString()}</span>
             </div>
-          )}
+            {selectedPhoto.note && (
+              <p className="text-sm text-foreground">{selectedPhoto.note}</p>
+            )}
+          </div>
         </div>
       )}
     </div>

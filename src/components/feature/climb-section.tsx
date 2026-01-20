@@ -8,7 +8,7 @@ const YDS_GRADES = ['5.0', '5.1', '5.2', '5.3', '5.4', '5.5', '5.6', '5.7', '5.8
 const FRENCH_GRADES = ['2', '3', '4a', '4b', '4c', '5a', '5b', '5c', '6a', '6a+', '6b', '6b+', '6c', '6c+', '7a', '7a+', '7b', '7b+', '7c', '7c+', '8a', '8a+', '8b', '8b+', '8c', '8c+', '9a', '9a+', '9b', '9b+', '9c', '9c+', 'Unrated']
 
 import { useState, useMemo } from 'react'
-import { Plus, Star, Check, Target, HelpCircle, ChevronDown, ChevronUp, ArrowUpDown, Eye, EyeOff, Camera } from 'lucide-react'
+import { Plus, Star, Check, Target, HelpCircle, ChevronDown, ChevronUp, ArrowUpDown, Eye, EyeOff, Camera, Trash2, MessageSquare, Edit2, Image as ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import type { Climb, Photo } from '@/lib/types'
@@ -35,6 +35,8 @@ export function ClimbSection({ climbs, photos, onAddClimb, publishControl }: Cli
   const [isPrivate, setIsPrivate] = useState(false)
   const [sortOption, setSortOption] = useState<SortOption>('new')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [description, setDescription] = useState('')
+  const [expandedClimbId, setExpandedClimbId] = useState<string | null>(null)
 
   // Auto-switch rating system based on type
   useMemo(() => {
@@ -53,6 +55,7 @@ export function ClimbSection({ climbs, photos, onAddClimb, publishControl }: Cli
     const newClimb: Climb = {
       id: `climb-${Date.now()}`,
       name: name || undefined,
+      description: description || undefined,
       rating: selectedRating,
       ratingSystem,
       stars: isRated ? stars : 0, // 0 can mean unrated or 0 stars, usually 0 means unrated in this UI context key
@@ -65,7 +68,10 @@ export function ClimbSection({ climbs, photos, onAddClimb, publishControl }: Cli
     }
     onAddClimb(newClimb)
     setIsAdding(false)
+    setIsAdding(false)
     setName('')
+    setDescription('')
+    setSelectedPhoto(null)
     setSelectedPhoto(null)
     setStars(0)
     setIsRated(false)
@@ -173,21 +179,21 @@ export function ClimbSection({ climbs, photos, onAddClimb, publishControl }: Cli
 
           {/* Grading System Tabs - Visible if not boulder */}
           {climbType !== 'boulder' && (
-            <div className="flex border-b border-border">
+            <div className="flex gap-4 border-b border-border">
               <button
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${ratingSystem === 'v-scale' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                className={`py-2 text-sm font-medium border-b-2 transition-colors ${ratingSystem === 'v-scale' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                 onClick={() => setRatingSystem('v-scale')}
               >
                 V-Scale
               </button>
               <button
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${ratingSystem === 'yds' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                className={`py-2 text-sm font-medium border-b-2 transition-colors ${ratingSystem === 'yds' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                 onClick={() => setRatingSystem('yds')}
               >
                 YDS
               </button>
               <button
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${ratingSystem === 'french' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                className={`py-2 text-sm font-medium border-b-2 transition-colors ${ratingSystem === 'french' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
                 onClick={() => setRatingSystem('french')}
               >
                 French
@@ -196,21 +202,24 @@ export function ClimbSection({ climbs, photos, onAddClimb, publishControl }: Cli
           )}
 
           {/* Rating Grid */}
-          <div className="mt-2">
-            <div className="grid grid-cols-5 gap-1.5 max-h-48 overflow-y-auto p-1">
-              {grades.map(grade => (
-                <button
-                  key={grade}
-                  className={`px-1 py-3 text-xs font-semibold rounded-md border transition-all ${selectedRating === grade
-                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                    : 'bg-card text-card-foreground border-border hover:bg-accent'}`}
-                  onClick={() => setSelectedRating(grade)}
-                >
-                  {grade}
-                </button>
-              ))}
+          {/* Hide V-scale grid for non-boulder types if not v-scale system */}
+          {(climbType === 'boulder' || ratingSystem === 'v-scale') && (
+            <div className="mt-2">
+              <div className="grid grid-cols-5 gap-1.5 max-h-48 overflow-y-auto p-1">
+                {grades.map(grade => (
+                  <button
+                    key={grade}
+                    className={`px-1 py-3 text-xs font-semibold rounded-md border transition-all ${selectedRating === grade
+                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                      : 'bg-card text-card-foreground border-border hover:bg-accent'}`}
+                    onClick={() => setSelectedRating(grade)}
+                  >
+                    {grade}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Status */}
           <div>
@@ -268,7 +277,7 @@ export function ClimbSection({ climbs, photos, onAddClimb, publishControl }: Cli
                 </button>
               ))}
               {isRated && (
-                <Button variant="ghost" size="xs" className="ml-2 h-6 text-xs" onClick={() => { setIsRated(false); setStars(0) }}>
+                <Button variant="ghost" size="sm" className="ml-2 h-6 text-xs" onClick={() => { setIsRated(false); setStars(0) }}>
                   Clear
                 </Button>
               )}
@@ -285,6 +294,19 @@ export function ClimbSection({ climbs, photos, onAddClimb, publishControl }: Cli
               className="w-full mt-1 px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground"
               value={name}
               onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+
+          {/* Description input */}
+          <div>
+            <Label htmlFor="climb-desc" className="text-sm text-muted-foreground">Description (optional)</Label>
+            <textarea
+              id="climb-desc"
+              placeholder="Add details..."
+              className="w-full mt-1 px-3 py-2 text-sm bg-input border border-border rounded-lg text-foreground placeholder:text-muted-foreground resize-none"
+              rows={2}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 
@@ -308,16 +330,13 @@ export function ClimbSection({ climbs, photos, onAddClimb, publishControl }: Cli
                 </button>
               )) : <span className="text-xs text-muted-foreground">No photos available</span>}
 
-              {/* Add Photo Button Placeholder - user said "it should expand down the normal photo adding window". 
-                     This is complex because PhotoSection is separate. 
-                     For now, I'll just put a button that says "Add Photo in Photos Section first" or trigger the callback if I lift state.
-                     The prompt says: "Underneath that should be a little plus sign saying, add photo."
-                     Since I can't easily trigger the `PhotoSection`'s internal state from here without refactoring `FeaturePopup` to control `PhotoSection` state,
-                     I will mock it or add a prompt.
-                     Actually, `FeaturePopup` has `PhotoSection`. 
-                     I will leave this as a future enhancement or just a dummy button for now that tells user "Please add photo in Photos section below".
-                     Or, simpler: Just show existing photos.
-                 */}
+              <div
+                className="flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                onClick={() => alert("Tagging a new photo is not implemented yet. Please add a photo in the Photos section below first.")}
+              >
+                <Plus className="h-5 w-5 mb-1" />
+                <span className="text-[9px] leading-none text-center">Tag Photo</span>
+              </div>
             </div>
           </div>
 
@@ -343,48 +362,108 @@ export function ClimbSection({ climbs, photos, onAddClimb, publishControl }: Cli
         <div className="space-y-2">
           {sortedClimbs.map((climb) => {
             const photo = climb.photoId ? photos.find(p => p.id === climb.photoId) : null
+            const isExpanded = expandedClimbId === climb.id
+
             return (
               <div
                 key={climb.id}
-                className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group"
+                className={`bg-muted/50 rounded-lg overflow-hidden group transition-all ${isExpanded ? 'ring-1 ring-primary' : ''}`}
+                onClick={() => setExpandedClimbId(isExpanded ? null : climb.id)}
               >
-                {/* Thumbnail */}
-                {photo ? (
-                  <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0 bg-secondary">
-                    <img src={photo.thumbnailUrl} className="w-full h-full object-cover" />
+                <div className="flex items-center gap-3 p-3 cursor-pointer">
+                  {/* Thumbnail */}
+                  {photo ? (
+                    <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0 bg-secondary">
+                      <img src={photo.thumbnailUrl} className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded flex items-center justify-center bg-muted-foreground/20 text-muted-foreground/50 flex-shrink-0">
+                      <ImageIcon className="h-5 w-5" />
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-foreground text-sm">{climb.name || 'Unnamed'}</span>
+                      <span className="text-sm font-medium text-muted-foreground">({climb.rating})</span>
+                      <span className="text-xs text-muted-foreground capitalize">{climb.type}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                      <div className="flex items-center">
+                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-0.5" />
+                        {/* Vote count static */}
+                        <span>0</span>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="w-10 h-10 rounded flex items-center justify-center bg-secondary text-muted-foreground flex-shrink-0">
-                    {/* Maybe grade? */}
-                    <span className="text-xs font-bold">{climb.rating}</span>
+
+                  <div className="flex flex-col items-end gap-1">
+                    {climb.isPrivate ? (
+                      <div className="flex flex-col items-center">
+                        <EyeOff className="h-3 w-3 text-muted-foreground mb-1" />
+                      </div>
+                    ) : (
+                      <div className="h-4" /> // spacer
+                    )}
+
+                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-sm 
+                                ${climb.status === 'send' ? 'bg-green-500/10 text-green-600' :
+                        climb.status === 'project' ? 'bg-yellow-500/10 text-yellow-600' : 'bg-blue-500/10 text-blue-600'}`}>
+                      {climb.status === 'send' ? 'SENT' : climb.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Expanded Content */}
+                {isExpanded && (
+                  <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-1 cursor-default" onClick={e => e.stopPropagation()}>
+                    {/* Description */}
+                    {climb.description && (
+                      <p className="text-sm text-foreground my-2">{climb.description}</p>
+                    )}
+
+                    {/* Photo Horizontal Scroll would go here if we had multiple photos per climb, but defined as single photoId for now */}
+
+                    <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
+                      <div className="flex gap-4">
+                        <button className="flex items-center gap-1 hover:text-foreground">
+                          <Edit2 className="h-3.5 w-3.5" />
+                          Edit
+                        </button>
+                        <button className="flex items-center gap-1 hover:text-foreground">
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          Comment
+                        </button>
+                        <button className="flex items-center gap-1 hover:text-foreground">
+                          <Camera className="h-3.5 w-3.5" />
+                          Tag Photo
+                        </button>
+                      </div>
+                      <button className="flex items-center gap-1 hover:text-destructive text-muted-foreground/70">
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </button>
+                    </div>
+
+                    {/* Inline Edit/Visibility Logic would be more complex here, 
+                              User asked for: "publish/unpublish 'eye' if the climb belongs to the user" 
+                              and "pop up a confirmation window".
+                              I will add the Eye button here properly.
+                          */}
+                    <div className="flex justify-end mt-2 pt-2 border-t border-border/30">
+                      <div className="flex items-center gap-2" onClick={() => {
+                        // Mock logic for visibility toggle with confirmation
+                        if (confirm(climb.isPrivate ? "Make public?" : "Make private?")) {
+                          // Toggle logic would happen here via onUpdateClimb prop if it existed
+                          console.log("Toggle visibility")
+                        }
+                      }}>
+                        {climb.isPrivate ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-green-500" />}
+                        <span className="text-xs">{climb.isPrivate ? "Private" : "Public"}</span>
+                      </div>
+                    </div>
                   </div>
                 )}
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground">{climb.rating}</span>
-                    {climb.ratingSystem === 'v-scale' && <span className="text-[10px] text-muted-foreground px-1 border rounded">V</span>}
-                    <span className="text-sm truncate">{climb.name || 'Unnamed'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <div className="flex items-center">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-0.5" />
-                      {/* Mocking Average vs You */}
-                      <span>{climb.stars} ({Math.floor(Math.random() * 10) + 1})</span>
-                    </div>
-                    <span>•</span>
-                    <span>{climb.stars} (you)</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-end gap-1">
-                  {climb.isPrivate && <EyeOff className="h-3 w-3 text-muted-foreground" />}
-                  <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-sm 
-                            ${climb.status === 'send' ? 'bg-green-500/10 text-green-600' :
-                      climb.status === 'project' ? 'bg-yellow-500/10 text-yellow-600' : 'bg-blue-500/10 text-blue-600'}`}>
-                    {climb.status}
-                  </span>
-                </div>
               </div>
             )
           })}

@@ -68,7 +68,7 @@ export const mockFeatures: Feature[] = [
     isSeen: true,
     seenByAnyone: true,
     notARock: null,
-    modelUrl: '/assets/3d/duck.glb',
+    modelUrl: undefined, // Was '/assets/3d/duck.glb' which caused 404
     climbs: [
       {
         id: 'climb-1',

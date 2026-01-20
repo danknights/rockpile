@@ -5,6 +5,7 @@ export type NotARockType = 'tree' | 'building' | 'other' | null
 export interface Climb {
   id: string
   name?: string
+  description?: string
   rating: string
   ratingSystem: 'v-scale' | 'yds' | 'french'
   stars: number
