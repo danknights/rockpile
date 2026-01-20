@@ -14,6 +14,7 @@ import {
   IonLabel,
   IonInput,
   IonToggle,
+  IonTextarea,
   IonSpinner,
   IonNote,
   IonActionSheet,
@@ -35,6 +36,7 @@ import {
   alertCircleOutline,
   expandOutline,
   contractOutline,
+  helpCircleOutline,
 } from 'ionicons/icons'
 import { Capacitor } from '@capacitor/core'
 import { Haptics, ImpactStyle } from '@capacitor/haptics'
@@ -59,8 +61,10 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
   const [hasLocalEdits, setHasLocalEdits] = useState(feature.hasLocalEdits)
   const [waitingForSignal, setWaitingForSignal] = useState(false)
   const [showAddLink, setShowAddLink] = useState(false)
-  const [newLink, setNewLink] = useState('')
-  const [showNotARockSheet, setShowNotARockSheet] = useState(false)
+  const [newLinkUrl, setNewLinkUrl] = useState('')
+  const [newLinkType, setNewLinkType] = useState('other')
+  const [newLinkDesc, setNewLinkDesc] = useState('')
+  const [showFixSheet, setShowFixSheet] = useState(false)
   const scrollRef = useRef<HTMLIonContentElement>(null)
   const startX = useRef(0)
 
@@ -223,12 +227,14 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
                 <IonLabel className={`text-sm ${!hasLocalEdits ? 'text-muted-foreground' : 'text-foreground'}`}>
                   Publish
                 </IonLabel>
-                <IonToggle
-                  checked={isPublished}
-                  onIonChange={(e) => handlePublishToggle(e.detail.checked)}
-                  disabled={!hasLocalEdits}
-                  style={{ '--handle-width': '20px', '--handle-height': '20px' }}
-                />
+                <div className="scale-125 origin-right mr-1">
+                  <IonToggle
+                    checked={isPublished}
+                    onIonChange={(e) => handlePublishToggle(e.detail.checked)}
+                    disabled={!hasLocalEdits}
+                    style={{ '--handle-width': '22px', '--handle-height': '22px' }}
+                  />
+                </div>
               </>
             )}
           </div>
@@ -247,7 +253,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
                 setFeature({ ...feature, isFavorite: !feature.isFavorite })
                 handleEdit()
               }}
-              className="native-button"
+              className="native-button px-3"
             >
               <IonIcon icon={feature.isFavorite ? heart : heartOutline} />
               <IonLabel>{feature.isFavorite ? 'Favorited' : 'Favorite'}</IonLabel>
@@ -260,54 +266,50 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
                 setFeature({ ...feature, isSeen: !feature.isSeen })
                 handleEdit()
               }}
-              className="native-button"
+              className="native-button px-3"
             >
               <IonIcon icon={feature.isSeen ? eye : eyeOutline} />
               <IonLabel>{feature.isSeen ? 'Seen' : 'Mark Seen'}</IonLabel>
             </IonChip>
 
             <IonChip
-              color={feature.notARock ? 'warning' : 'medium'}
+              color={feature.notARock || feature.needsRefinement ? 'warning' : 'medium'}
               onClick={() => {
                 triggerHaptic()
-                setShowNotARockSheet(true)
+                setShowFixSheet(true)
               }}
-              className="native-button"
+              className="native-button px-3"
             >
               <IonIcon icon={alertCircleOutline} />
-              <IonLabel>{feature.notARock ? `Not a rock: ${feature.notARock}` : 'Not a rock?'}</IonLabel>
+              <IonLabel>Suggest a fix</IonLabel>
             </IonChip>
           </div>
 
           {/* Properties */}
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Height</span>
-                <span className="text-foreground font-medium">{feature.height}m ({metersToFeet(feature.height)}ft)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Length</span>
-                <span className="text-foreground font-medium">{feature.length}m ({metersToFeet(feature.length)}ft)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Width</span>
-                <span className="text-foreground font-medium">{feature.width}m ({metersToFeet(feature.width)}ft)</span>
-              </div>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+            <div className="contents">
+              <div className="text-right text-muted-foreground">Height</div>
+              <div className="text-left font-medium text-foreground">{feature.height}m / {metersToFeet(feature.height)}ft</div>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Elevation</span>
-                <span className="text-foreground font-medium">{feature.elevation}m ({metersToFeet(feature.elevation)}ft)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">To road</span>
-                <span className="text-foreground font-medium">{feature.distanceToRoad}m ({metersToFeet(feature.distanceToRoad)}ft)</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Bushwhack</span>
-                <span className="text-foreground font-medium">{feature.bushwhackDistance}m ({metersToFeet(feature.bushwhackDistance)}ft)</span>
-              </div>
+            <div className="contents">
+              <div className="text-right text-muted-foreground">Length</div>
+              <div className="text-left font-medium text-foreground">{feature.length}m / {metersToFeet(feature.length)}ft</div>
+            </div>
+            <div className="contents">
+              <div className="text-right text-muted-foreground">Width</div>
+              <div className="text-left font-medium text-foreground">{feature.width}m / {metersToFeet(feature.width)}ft</div>
+            </div>
+            <div className="contents">
+              <div className="text-right text-muted-foreground">Elevation</div>
+              <div className="text-left font-medium text-foreground">{feature.elevation}m / {metersToFeet(feature.elevation)}ft</div>
+            </div>
+            <div className="contents">
+              <div className="text-right text-muted-foreground">To road</div>
+              <div className="text-left font-medium text-foreground">{feature.distanceToRoad}m / {metersToFeet(feature.distanceToRoad)}ft</div>
+            </div>
+            <div className="contents">
+              <div className="text-right text-muted-foreground">Bushwhack</div>
+              <div className="text-left font-medium text-foreground">{feature.bushwhackDistance}m / {metersToFeet(feature.bushwhackDistance)}ft</div>
             </div>
           </div>
 
@@ -316,7 +318,7 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             <div>
               <p className="text-xs text-muted-foreground">Location</p>
               <p className="text-sm font-mono text-foreground">
-                {feature.latitude.toFixed(5)}° N, {Math.abs(feature.longitude).toFixed(5)}° W
+                {feature.latitude.toFixed(7)}° N, {Math.abs(feature.longitude).toFixed(7)}° W
               </p>
             </div>
             <div className="flex gap-2">
@@ -331,6 +333,47 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
                 <IonIcon icon={navigateOutline} slot="start" />
                 Go
               </IonButton>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <h3 className="font-medium text-foreground">Description</h3>
+            <div className="bg-muted/30 rounded-lg p-2">
+              <IonTextarea
+                className="text-sm"
+                placeholder="Add a description..."
+                value={feature.description}
+                onIonChange={e => {
+                  setFeature({ ...feature, description: e.detail.value! })
+                  handleEdit()
+                }}
+                autoGrow={true}
+              />
+            </div>
+          </div>
+
+          {/* Quick Notes */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <h3 className="font-medium text-foreground">Quick Notes (Private)</h3>
+              <IonIcon
+                icon={helpCircleOutline}
+                className="text-muted-foreground"
+                onClick={() => present({ message: 'Quick notes are for your eyes only. Use Comments for public notes.', duration: 3000 })}
+              />
+            </div>
+            <div className="bg-muted/30 rounded-lg p-2">
+              <IonTextarea
+                className="text-sm"
+                placeholder="Private notes..."
+                value={feature.quickNotes}
+                onIonChange={e => {
+                  setFeature({ ...feature, quickNotes: e.detail.value! })
+                  handleEdit()
+                }}
+                autoGrow={true}
+              />
             </div>
           </div>
 
@@ -360,28 +403,58 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
             </div>
 
             {showAddLink && (
-              <div className="flex gap-2">
+              <div className="bg-muted/30 p-3 rounded-lg space-y-3">
+                <div className="flex gap-2">
+                  <select
+                    className="bg-card rounded px-2 py-1 text-sm border-none"
+                    value={newLinkType}
+                    onChange={(e) => setNewLinkType(e.target.value)}
+                  >
+                    <option value="mountainProject">Mtn Proj</option>
+                    <option value="video">Video</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <IonInput
+                    type="url"
+                    placeholder="https://..."
+                    value={newLinkUrl}
+                    onIonInput={(e) => setNewLinkUrl(e.detail.value || '')}
+                    className="flex-1 bg-card rounded px-2 text-sm"
+                  />
+                </div>
                 <IonInput
-                  type="url"
-                  placeholder="Paste URL..."
-                  value={newLink}
-                  onIonInput={(e) => setNewLink(e.detail.value || '')}
-                  className="flex-1 bg-input rounded-lg"
+                  placeholder="Description (optional)"
+                  value={newLinkDesc}
+                  onIonInput={(e) => setNewLinkDesc(e.detail.value || '')}
+                  className="bg-card rounded px-2 text-sm"
                 />
-                <IonButton
-                  size="small"
-                  onClick={() => {
-                    if (newLink) {
-                      triggerHaptic()
-                      handleEdit()
-                      setNewLink('')
-                      setShowAddLink(false)
-                    }
-                  }}
-                  className="native-button"
-                >
-                  Add
-                </IonButton>
+                <div className="flex justify-end gap-2">
+                  <IonButton
+                    size="small"
+                    fill="clear"
+                    onClick={() => setShowAddLink(false)}
+                  >
+                    Cancel
+                  </IonButton>
+                  <IonButton
+                    size="small"
+                    onClick={() => {
+                      if (newLinkUrl) {
+                        triggerHaptic()
+                        handleEdit()
+                        setFeature({
+                          ...feature,
+                          links: [...feature.links, { type: newLinkType as any, url: newLinkUrl, label: newLinkDesc }]
+                        })
+                        setNewLinkUrl('')
+                        setNewLinkDesc('')
+                        setShowAddLink(false)
+                      }
+                    }}
+                  >
+                    Add
+                  </IonButton>
+                </div>
               </div>
             )}
 
@@ -420,8 +493,8 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
           {/* Comments */}
           <CommentSection
             comments={feature.comments}
-            onAddComment={(comment) => {
-              setFeature({ ...feature, comments: [...feature.comments, comment] })
+            onCommentsChange={(newComments) => {
+              setFeature({ ...feature, comments: newComments })
               handleEdit()
             }}
           />
@@ -431,40 +504,47 @@ export function FeaturePopup({ feature: initialFeature, onClose, onGoTo, nearbyF
         </div>
       </IonContent>
 
-      {/* Not A Rock Action Sheet */}
       <IonActionSheet
-        isOpen={showNotARockSheet}
-        onDidDismiss={() => setShowNotARockSheet(false)}
-        header="Mark as not a rock"
+        isOpen={showFixSheet}
+        onDidDismiss={() => setShowFixSheet(false)}
+        header="Suggest a fix"
         buttons={[
           {
             text: 'Tree / Vegetation',
             handler: () => {
-              setFeature({ ...feature, notARock: 'tree' })
+              setFeature({ ...feature, notARock: 'tree', needsRefinement: null })
               handleEdit()
             },
           },
           {
             text: 'Building / Structure',
             handler: () => {
-              setFeature({ ...feature, notARock: 'building' })
+              setFeature({ ...feature, notARock: 'building', needsRefinement: null })
+              handleEdit()
+            },
+          },
+          {
+            text: 'Missing part of rock',
+            handler: () => {
+              setFeature({ ...feature, notARock: null, needsRefinement: 'missing' })
+              handleEdit()
+            },
+          },
+          {
+            text: 'Includes non-rock',
+            handler: () => {
+              setFeature({ ...feature, notARock: null, needsRefinement: 'extra' })
               handleEdit()
             },
           },
           {
             text: 'Other',
             handler: () => {
-              setFeature({ ...feature, notARock: 'other' })
+              setFeature({ ...feature, notARock: 'other', needsRefinement: null })
               handleEdit()
             },
           },
-          {
-            text: 'Clear (it is a rock)',
-            handler: () => {
-              setFeature({ ...feature, notARock: null })
-              handleEdit()
-            },
-          },
+
           {
             text: 'Cancel',
             role: 'cancel',

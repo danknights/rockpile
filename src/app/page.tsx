@@ -31,6 +31,7 @@ import { HamburgerMenu } from '@/components/menu/hamburger-menu'
 import { SettingsPanel } from '@/components/settings/settings-panel'
 import { ProfilePanel } from '@/components/profile/profile-panel'
 import { OfflinePanel } from '@/components/offline/offline-panel'
+import { HelpPanel } from '@/components/support/help-panel'
 import { mockFeatures } from '@/lib/mock-data'
 import type { Feature, MapFilter } from '@/lib/types'
 
@@ -62,6 +63,10 @@ const defaultFilter: MapFilter = {
   hasProjects: false,
   hasPossibleLines: false,
   notARock: false,
+  minBoulderDifficulty: null,
+  maxBoulderDifficulty: null,
+  minRouteDifficulty: null,
+  maxRouteDifficulty: null,
 }
 
 export default function Home() {
@@ -71,9 +76,10 @@ export default function Home() {
   const [showSatellite, setShowSatellite] = useState(true)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [settingsSection, setSettingsSection] = useState<'appearance' | 'data' | 'privacy' | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isOfflineOpen, setIsOfflineOpen] = useState(false)
+  const [isHelpOpen, setIsHelpOpen] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; heading: number } | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
@@ -116,7 +122,7 @@ export default function Home() {
         // Get initial position
         const position = await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 15000,
         })
 
         setUserLocation({
@@ -228,17 +234,21 @@ export default function Home() {
         <HamburgerMenu
           isOpen={isMenuOpen}
           onToggle={() => setIsMenuOpen(!isMenuOpen)}
-          onOpenSettings={() => {
-            setIsSettingsOpen(true)
+          onOpenSettings={(section) => {
             setIsMenuOpen(false)
+            setSettingsSection(section)
           }}
           onOpenProfile={() => {
-            setIsProfileOpen(true)
             setIsMenuOpen(false)
+            setIsProfileOpen(true)
           }}
           onOpenOffline={() => {
-            setIsOfflineOpen(true)
             setIsMenuOpen(false)
+            setIsOfflineOpen(true)
+          }}
+          onOpenHelp={() => {
+            setIsMenuOpen(false)
+            setIsHelpOpen(true)
           }}
         />
       </IonMenu>
@@ -270,8 +280,12 @@ export default function Home() {
             </IonFabButton>
           </IonFab>
 
-          {/* Filter Button - Top Right */}
-          <IonFab vertical="top" horizontal="end" slot="fixed" style={{ marginTop: 'env(safe-area-inset-top, 16px)', marginRight: '8px' }}>
+          {/* Map Controls - Bottom Right */}
+          <div
+            className="fixed right-4 flex flex-col gap-2 z-10"
+            style={{ bottom: 'calc(env(safe-area-inset-bottom, 16px) + 80px)' }}
+          >
+            {/* Filter Button */}
             <IonFabButton
               size="small"
               color="dark"
@@ -283,13 +297,7 @@ export default function Home() {
             >
               <IonIcon icon={filterOutline} />
             </IonFabButton>
-          </IonFab>
 
-          {/* Map Controls - Bottom Right */}
-          <div
-            className="fixed right-4 flex flex-col gap-2 z-10"
-            style={{ bottom: 'calc(env(safe-area-inset-bottom, 16px) + 80px)' }}
-          >
             {/* Satellite Toggle */}
             <IonFabButton
               size="small"
@@ -385,10 +393,14 @@ export default function Home() {
         </IonModal>
 
         {/* Settings Modal */}
-        <IonModal isOpen={isSettingsOpen} onDidDismiss={() => setIsSettingsOpen(false)}>
+        <IonModal isOpen={settingsSection !== null} onDidDismiss={() => setSettingsSection(null)}>
           <SettingsPanel
-            isOpen={isSettingsOpen}
-            onClose={() => setIsSettingsOpen(false)}
+            isOpen={settingsSection !== null}
+            onClose={() => {
+              setSettingsSection(null)
+              setIsMenuOpen(true)
+            }}
+            section={settingsSection || 'appearance'}
           />
         </IonModal>
 
@@ -396,7 +408,21 @@ export default function Home() {
         <IonModal isOpen={isProfileOpen} onDidDismiss={() => setIsProfileOpen(false)}>
           <ProfilePanel
             isOpen={isProfileOpen}
-            onClose={() => setIsProfileOpen(false)}
+            onClose={() => {
+              setIsProfileOpen(false)
+              setIsMenuOpen(true)
+            }}
+          />
+        </IonModal>
+
+        {/* Help Panel */}
+        <IonModal isOpen={isHelpOpen} onDidDismiss={() => setIsHelpOpen(false)}>
+          <HelpPanel
+            isOpen={isHelpOpen}
+            onClose={() => {
+              setIsHelpOpen(false)
+              setIsMenuOpen(true)
+            }}
           />
         </IonModal>
 
@@ -404,7 +430,10 @@ export default function Home() {
         <IonModal isOpen={isOfflineOpen} onDidDismiss={() => setIsOfflineOpen(false)}>
           <OfflinePanel
             isOpen={isOfflineOpen}
-            onClose={() => setIsOfflineOpen(false)}
+            onClose={() => {
+              setIsOfflineOpen(false)
+              setIsMenuOpen(true)
+            }}
           />
         </IonModal>
 

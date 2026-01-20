@@ -117,11 +117,10 @@ export function ClimbSection({ climbs, photos, onAddClimb }: ClimbSectionProps) 
               {grades.map((grade) => (
                 <button
                   key={grade}
-                  className={`px-2 py-1.5 text-xs rounded transition-colors ${
-                    selectedRating === grade
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                  }`}
+                  className={`px-2 py-2 text-xs rounded transition-colors ${selectedRating === grade
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    }`}
                   onClick={() => setSelectedRating(grade)}
                 >
                   {grade}
@@ -143,7 +142,7 @@ export function ClimbSection({ climbs, photos, onAddClimb }: ClimbSectionProps) 
                   className="flex items-center gap-1.5 capitalize"
                 >
                   {getStatusIcon(status)}
-                  {status === 'possible' ? 'Possible Line' : status}
+                  {status === 'possible' ? 'Possible' : status === 'send' ? 'Sent' : status}
                 </Button>
               ))}
             </div>
@@ -175,9 +174,8 @@ export function ClimbSection({ climbs, photos, onAddClimb }: ClimbSectionProps) 
                 {photos.map((photo) => (
                   <button
                     key={photo.id}
-                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
-                      selectedPhoto === photo.id ? 'border-primary' : 'border-transparent'
-                    }`}
+                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${selectedPhoto === photo.id ? 'border-primary' : 'border-transparent'
+                      }`}
                     onClick={() => setSelectedPhoto(selectedPhoto === photo.id ? null : photo.id)}
                   >
                     <img src={photo.thumbnailUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover" />
@@ -218,13 +216,13 @@ export function ClimbSection({ climbs, photos, onAddClimb }: ClimbSectionProps) 
                   </div>
                 </div>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full capitalize ${
-                climb.status === 'send' ? 'bg-green-500/20 text-green-400' :
+              <span className={`text-xs px-2 py-1 rounded-full capitalize ${climb.status === 'send' ? 'bg-green-500/20 text-green-400' :
                 climb.status === 'project' ? 'bg-yellow-500/20 text-yellow-400' :
-                'bg-blue-500/20 text-blue-400'
-              }`}>
-                {climb.status === 'possible' ? 'Possible' : climb.status}
+                  'bg-blue-500/20 text-blue-400'
+                }`}>
+                {climb.status === 'possible' ? 'Possible' : climb.status === 'send' ? 'Sent' : climb.status}
               </span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground ml-2" />
             </div>
           ))}
         </div>

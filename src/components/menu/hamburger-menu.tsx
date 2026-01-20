@@ -24,6 +24,7 @@ import {
   serverOutline,
   shieldOutline,
   helpCircleOutline,
+  eyeOutline,
   chatbubbleOutline,
   logOutOutline,
 } from 'ionicons/icons'
@@ -32,9 +33,10 @@ import { mockUser } from '@/lib/mock-data'
 interface HamburgerMenuProps {
   isOpen: boolean
   onToggle: () => void
-  onOpenSettings: () => void
+  onOpenSettings: (section: 'appearance' | 'data' | 'privacy') => void
   onOpenProfile: () => void
   onOpenOffline: () => void
+  onOpenHelp: () => void
 }
 
 export function HamburgerMenu({
@@ -42,7 +44,8 @@ export function HamburgerMenu({
   onToggle,
   onOpenSettings,
   onOpenProfile,
-  onOpenOffline
+  onOpenOffline,
+  onOpenHelp
 }: HamburgerMenuProps) {
   const [darkMode, setDarkMode] = useState(true)
 
@@ -50,7 +53,7 @@ export function HamburgerMenu({
     <>
       <IonHeader>
         <IonToolbar>
-          <IonTitle>RockScout</IonTitle>
+          <IonTitle>Rockpile</IonTitle>
         </IonToolbar>
       </IonHeader>
 
@@ -58,10 +61,7 @@ export function HamburgerMenu({
         {/* User Profile Preview */}
         <IonMenuToggle autoHide={false}>
           <IonItem
-            button
-            detail={false}
-            onClick={onOpenProfile}
-            className="native-button my-2 mx-2 rounded-xl"
+            className="my-2 mx-2 rounded-xl"
             lines="none"
             style={{ '--background': 'var(--ion-color-step-100)' }}
           >
@@ -79,59 +79,46 @@ export function HamburgerMenu({
         <IonList lines="none" className="px-2">
           <IonMenuToggle autoHide={false}>
             <IonItem button detail={false} onClick={onOpenProfile} className="native-button rounded-lg my-1">
-              <IonIcon icon={personOutline} slot="start" />
+              <IonIcon icon={personOutline} slot="start" className="mr-3" />
               <IonLabel>My Profile</IonLabel>
             </IonItem>
           </IonMenuToggle>
 
           <IonMenuToggle autoHide={false}>
-            <IonItem button detail={false} onClick={onOpenSettings} className="native-button rounded-lg my-1">
-              <IonIcon icon={settingsOutline} slot="start" />
-              <IonLabel>Settings</IonLabel>
+            <IonItem button detail={false} onClick={() => onOpenSettings('appearance')} className="native-button rounded-lg my-1">
+              <IonIcon icon={eyeOutline} slot="start" className="mr-3" />
+              <IonLabel>Appearance</IonLabel>
+            </IonItem>
+          </IonMenuToggle>
+
+          <IonMenuToggle autoHide={false}>
+            <IonItem button detail={false} onClick={() => onOpenSettings('data')} className="native-button rounded-lg my-1">
+              <IonIcon icon={serverOutline} slot="start" className="mr-3" />
+              <IonLabel>Data & Storage</IonLabel>
+            </IonItem>
+          </IonMenuToggle>
+
+          <IonMenuToggle autoHide={false}>
+            <IonItem button detail={false} onClick={() => onOpenSettings('privacy')} className="native-button rounded-lg my-1">
+              <IonIcon icon={shieldOutline} slot="start" className="mr-3" />
+              <IonLabel>Privacy & Security</IonLabel>
             </IonItem>
           </IonMenuToggle>
 
           <IonMenuToggle autoHide={false}>
             <IonItem button detail={false} onClick={onOpenOffline} className="native-button rounded-lg my-1">
-              <IonIcon icon={downloadOutline} slot="start" />
+              <IonIcon icon={downloadOutline} slot="start" className="mr-3" />
               <IonLabel>Offline Regions</IonLabel>
             </IonItem>
           </IonMenuToggle>
 
-          <IonItem lines="none" className="rounded-lg my-1">
-            <IonIcon icon={darkMode ? moonOutline : sunnyOutline} slot="start" />
-            <IonLabel>Dark Mode</IonLabel>
-            <IonToggle
-              slot="end"
-              checked={darkMode}
-              onIonChange={(e) => setDarkMode(e.detail.checked)}
-            />
-          </IonItem>
-        </IonList>
+          {/* Divider */}
+          <div className="h-px bg-border mx-4 my-4" />
 
-        {/* Divider */}
-        <div className="h-px bg-border mx-4 my-4" />
-
-        {/* Secondary Menu Items */}
-        <IonList lines="none" className="px-2">
-          <IonItem button detail={false} className="native-button rounded-lg my-1">
-            <IonIcon icon={serverOutline} slot="start" />
-            <IonLabel>Data & Storage</IonLabel>
-          </IonItem>
-
-          <IonItem button detail={false} className="native-button rounded-lg my-1">
-            <IonIcon icon={shieldOutline} slot="start" />
-            <IonLabel>Privacy & Security</IonLabel>
-          </IonItem>
-
-          <IonItem button detail={false} className="native-button rounded-lg my-1">
-            <IonIcon icon={helpCircleOutline} slot="start" />
+          {/* Support Items */}
+          <IonItem button detail={false} onClick={onOpenHelp} className="native-button rounded-lg my-1">
+            <IonIcon icon={helpCircleOutline} slot="start" className="mr-3" />
             <IonLabel>Help & Support</IonLabel>
-          </IonItem>
-
-          <IonItem button detail={false} className="native-button rounded-lg my-1">
-            <IonIcon icon={chatbubbleOutline} slot="start" />
-            <IonLabel>Send Feedback</IonLabel>
           </IonItem>
         </IonList>
 
@@ -148,7 +135,7 @@ export function HamburgerMenu({
             <IonLabel color="danger">Sign Out</IonLabel>
           </IonItem>
           <IonNote className="block text-center text-xs mt-3">
-            RockScout v1.0.0
+            Rockpile v1.0.0
           </IonNote>
           {/* Safe area padding */}
           <div style={{ height: 'env(safe-area-inset-bottom, 0px)' }} />

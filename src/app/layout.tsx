@@ -22,11 +22,11 @@ export default function RootLayout({
         />
         <meta name="format-detection" content="telephone=no" />
         <meta name="msapplication-tap-highlight" content="no" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="theme-color" content="#0a0a0a" />
 
-        <title>RockScout - LiDAR Climbing Explorer</title>
+        <title>Rockpile - LiDAR Climbing Explorer</title>
         <meta name="description" content="Explore 3D LiDAR scans of cliffs and boulders across public lands" />
 
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />

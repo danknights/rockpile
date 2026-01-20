@@ -36,7 +36,7 @@ export function PhotoSection({ photos, onAddPhoto }: PhotoSectionProps) {
     if (!isAnnotating) return
     const rect = canvasRef.current?.getBoundingClientRect()
     if (!rect) return
-    
+
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
     setCurrentAnnotation([{ x, y }])
@@ -46,11 +46,11 @@ export function PhotoSection({ photos, onAddPhoto }: PhotoSectionProps) {
     if (!isAnnotating || currentAnnotation.length === 0) return
     const rect = canvasRef.current?.getBoundingClientRect()
     if (!rect) return
-    
+
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
     setCurrentAnnotation(prev => [...prev, { x, y }])
-    
+
     // Draw
     const ctx = canvasRef.current?.getContext('2d')
     if (ctx && currentAnnotation.length > 0) {
@@ -87,7 +87,7 @@ export function PhotoSection({ photos, onAddPhoto }: PhotoSectionProps) {
       img.onload = () => {
         ctx.clearRect(0, 0, canvasRef.current!.width, canvasRef.current!.height)
         ctx.drawImage(img, 0, 0, canvasRef.current!.width, canvasRef.current!.height)
-        
+
         annotations.slice(0, -1).forEach(annotation => {
           const points = JSON.parse(annotation)
           if (points.length > 1) {
@@ -180,7 +180,7 @@ export function PhotoSection({ photos, onAddPhoto }: PhotoSectionProps) {
               onMouseUp={handleCanvasMouseUp}
               onMouseLeave={handleCanvasMouseUp}
             />
-            
+
             {annotations.length > 0 && (
               <div className="absolute top-2 right-2 flex gap-1">
                 <Button variant="secondary" size="icon" className="h-8 w-8" onClick={handleUndo}>
@@ -224,14 +224,19 @@ export function PhotoSection({ photos, onAddPhoto }: PhotoSectionProps) {
       )}
 
       {photos.length > 0 ? (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-4 snap-x">
           {photos.map((photo) => (
             <button
               key={photo.id}
-              className="aspect-square rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+              className="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden hover:ring-2 hover:ring-primary transition-all snap-center relative"
               onClick={() => setSelectedPhoto(photo)}
             >
               <img src={photo.thumbnailUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover" />
+              {photo.note && (
+                <div className="absolute bottom-0 left-0 right-0 bg-black/50 p-1">
+                  <p className="text-[10px] text-white truncate">{photo.note}</p>
+                </div>
+              )}
             </button>
           ))}
         </div>
@@ -241,7 +246,7 @@ export function PhotoSection({ photos, onAddPhoto }: PhotoSectionProps) {
 
       {/* Photo viewer modal */}
       {selectedPhoto && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
           onClick={() => setSelectedPhoto(null)}
         >

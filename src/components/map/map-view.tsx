@@ -133,7 +133,7 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
         new maplibregl.ScaleControl({ maxWidth: 80, unit: 'imperial' }),
         'bottom-left'
       )
-      map.current.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right')
+
 
       map.current.on('load', () => {
         setMapLoaded(true)
@@ -312,7 +312,7 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
       })
     })
 
-    addPublicLandsLayer()
+    // addPublicLandsLayer() - Removed based on user feedback (green rectangle)
   }
 
   useEffect(() => {

@@ -9,23 +9,29 @@ import type { Comment } from '@/lib/types'
 
 interface CommentSectionProps {
   comments: Comment[]
-  onAddComment: (comment: Comment) => void
+  onCommentsChange: (comments: Comment[]) => void
 }
 
-function CommentItem({ 
-  comment, 
-  onReply, 
+function CommentItem({
+  comment,
+  onReply,
   onLike,
+  onEdit,
+  onDelete,
   onFlag,
-  isReply = false 
-}: { 
+  isReply = false
+}: {
   comment: Comment
   onReply: (parentId: string) => void
   onLike: (id: string) => void
+  onEdit: (id: string, newText: string) => void
+  onDelete: (id: string) => void
   onFlag: (id: string, reason: string) => void
   isReply?: boolean
 }) {
   const [showFlagMenu, setShowFlagMenu] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editText, setEditText] = useState(comment.text)
   const isOwn = comment.userId === 'user-1'
 
   const formatDate = (dateStr: string) => {
@@ -33,7 +39,7 @@ function CommentItem({
     const now = new Date()
     const diff = now.getTime() - date.getTime()
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-    
+
     if (days === 0) return 'Today'
     if (days === 1) return 'Yesterday'
     if (days < 7) return `${days} days ago`
@@ -51,7 +57,29 @@ function CommentItem({
           <span className="font-medium text-sm text-foreground">{comment.userName}</span>
           <span className="text-xs text-muted-foreground">{formatDate(comment.createdAt)}</span>
         </div>
-        <p className="text-sm text-foreground mt-1">{comment.text}</p>
+        {isEditing ? (
+          <div className="mt-2">
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              className="w-full text-sm p-2 border border-border rounded-md bg-transparent"
+              rows={2}
+            />
+            <div className="flex gap-2 mt-2">
+              <Button size="sm" onClick={() => {
+                onEdit(comment.id, editText)
+                setIsEditing(false)
+              }}>
+                Save
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-foreground mt-1">{comment.text}</p>
+        )}
         <div className="flex items-center gap-3 mt-2">
           <button
             className={`flex items-center gap-1 text-xs ${comment.likedByUser ? 'text-primary' : 'text-muted-foreground'} hover:text-primary transition-colors`}
@@ -78,11 +106,11 @@ function CommentItem({
             <DropdownMenuContent align="start">
               {isOwn ? (
                 <>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setIsEditing(true)}>
                     <Edit2 className="h-4 w-4 mr-2" />
                     Edit
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem className="text-destructive" onClick={() => onDelete(comment.id)}>
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete
                   </DropdownMenuItem>
@@ -106,6 +134,8 @@ function CommentItem({
                 comment={reply}
                 onReply={onReply}
                 onLike={onLike}
+                onEdit={onEdit}
+                onDelete={onDelete}
                 onFlag={onFlag}
                 isReply
               />
@@ -117,14 +147,14 @@ function CommentItem({
   )
 }
 
-export function CommentSection({ comments, onAddComment }: CommentSectionProps) {
+export function CommentSection({ comments, onCommentsChange }: CommentSectionProps) {
   const [newComment, setNewComment] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
 
   const handleSubmit = () => {
     if (!newComment.trim()) return
 
-    const comment: Comment = {
+    const newCommentObj: Comment = {
       id: `comment-${Date.now()}`,
       userId: 'user-1',
       userName: 'Current User',
@@ -136,18 +166,71 @@ export function CommentSection({ comments, onAddComment }: CommentSectionProps) 
       replies: [],
     }
 
-    onAddComment(comment)
+    if (replyingTo) {
+      // Add as reply
+      const updateReplies = (list: Comment[]): Comment[] => {
+        return list.map(c => {
+          if (c.id === replyingTo) {
+            return { ...c, replies: [...c.replies, newCommentObj] }
+          }
+          if (c.replies.length > 0) {
+            return { ...c, replies: updateReplies(c.replies) }
+          }
+          return c
+        })
+      }
+      onCommentsChange(updateReplies(comments))
+    } else {
+      // Add as root comment
+      onCommentsChange([...comments, newCommentObj])
+    }
+
     setNewComment('')
     setReplyingTo(null)
   }
 
   const handleLike = (id: string) => {
-    // In real app, this would toggle like
-    console.log('Like comment:', id)
+    const updateLikes = (list: Comment[]): Comment[] => {
+      return list.map(c => {
+        if (c.id === id) {
+          return {
+            ...c,
+            likes: c.likedByUser ? c.likes - 1 : c.likes + 1,
+            likedByUser: !c.likedByUser
+          }
+        }
+        if (c.replies.length > 0) {
+          return { ...c, replies: updateLikes(c.replies) }
+        }
+        return c
+      })
+    }
+    onCommentsChange(updateLikes(comments))
   }
 
   const handleFlag = (id: string, reason: string) => {
     console.log('Flag comment:', id, reason)
+  }
+
+  const handleEdit = (id: string, newText: string) => {
+    const updateComment = (list: Comment[]): Comment[] => {
+      return list.map(c => {
+        if (c.id === id) return { ...c, text: newText }
+        if (c.replies.length > 0) return { ...c, replies: updateComment(c.replies) }
+        return c
+      })
+    }
+    onCommentsChange(updateComment(comments))
+  }
+
+  const handleDelete = (id: string) => {
+    const removeComment = (list: Comment[]): Comment[] => {
+      return list.filter(c => c.id !== id).map(c => ({
+        ...c,
+        replies: removeComment(c.replies)
+      }))
+    }
+    onCommentsChange(removeComment(comments))
   }
 
   return (
@@ -192,6 +275,8 @@ export function CommentSection({ comments, onAddComment }: CommentSectionProps) 
             comment={comment}
             onReply={setReplyingTo}
             onLike={handleLike}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
             onFlag={handleFlag}
           />
         ))}

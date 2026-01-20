@@ -1,23 +1,15 @@
 2026-01-19 2:45pm
-Name: the app is currently called rock Scout. Let's rename it Rockpile. 
+Name: the app is currently called rock Scout. Let's rename it Rockpile. Fix this everywhere in the whole repo.
 
 ## Main map:
 
-Let's move the filter dropdox to just above the map layers button and make it look like a filter.
+Let's move the filter dropdown to just above the map layers button and make it look like a filter button (like funnel or something?)
 
 Let's move the legend to the right instead of top left because the settings hamburger is blocking the "boulder" legend.
 
 Let's shrink the legend and text a bit. 
 
-We don't seem to be actually loading my map with my custom pmt files etc. This just has fake files. Let's start showing my actual map. With my actual features. See the external-component-generators/step5_make_map.py to see the exact format of the map. 
-
-When you click the "i" at the bottom right, the map is showing "openstreetmap" at the bottom and says "improve this map"...why are we using OSM? My map uses MapBox. We should remove this information "i" also. And it says "map box" in the lower left. Can I get rid of that?
-
-When we turn off satellite, we lose the 3-D shape of the terrain. Can we turn off satellite but keep 3-D shape??
-
 ## Filter
-
-The filters seem to be working on the map (of course, with the fake data)
 
 They look OK for now. But the different types of filters have those little drop-down arrows. Whenever you click on a filter, it immediately closes the drop-down and makes that filter disappear. This is bad behavior. However, I think we should just get rid of the drop-down's. We don't have that many filters. We can just show them all. Then the person can just scroll down and click the ones they want.
 
@@ -27,9 +19,8 @@ They look OK for now. But the different types of filters have those little drop-
 The title is fine, and also shows the ID.
 
 ### 3-D plot.
-This looks like it is still a simulated 3-D viewer. We should be pulling actual 3-D plots from my back blaze set up. These are built into the map structure that I already have made. (urls are listed in the PMT files).
 
-There are some changes needed to the 3d viewer. I am writing them down here so that I can make them in the external tool: (1) We don't need the ID of the feature at the top, because that is displayed above in the title of the pop-up window. (2) we don't need to display any of the data about the feature, because that will be displayed below. We just need the surface toggle, and the context slider. Although I do like the appearance of the contacts and surface sliders here, which are on a semi-transparent, black, rounded rectangle, with green background, little circles for dragging. See ![alt text](user_stories/tests-20260119-1528/tests-202601181525.jpg). Also, let's take the "needs refinement" out of this.
+Nothing to do. This needs to be changed externally.
 
 ### Publish button
 Looks good, except the circle is a little too small for the button

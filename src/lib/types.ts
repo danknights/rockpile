@@ -63,6 +63,8 @@ export interface Feature {
   isPublished: boolean
   hasLocalEdits: boolean
   needsRefinement?: 'missing' | 'extra' | 'both' | null
+  description?: string
+  quickNotes?: string
 }
 
 export interface User {
@@ -85,6 +87,10 @@ export interface MapFilter {
   maxWidth: number | null
   maxDistanceToRoad: number | null
   maxBushwhack: number | null
+  minBoulderDifficulty: number | null
+  maxBoulderDifficulty: number | null
+  minRouteDifficulty: number | null
+  maxRouteDifficulty: number | null
   favorites: boolean
   hasClimbs: boolean
   hasProjects: boolean
