@@ -69,6 +69,14 @@ const defaultFilter: MapFilter = {
   maxRouteDifficulty: null,
 }
 
+function smoothAngle(prev: number, next: number, alpha = 0.05) {
+  if (prev < 0) return next
+  let delta = next - prev
+  if (delta > 180) delta -= 360
+  if (delta < -180) delta += 360
+  return (prev + delta * alpha + 360) % 360
+}
+
 export default function Home() {
   const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null)
   const [goToFeature, setGoToFeature] = useState<Feature | null>(null)
@@ -87,9 +95,34 @@ export default function Home() {
   const [toastMessage, setToastMessage] = useState('')
   const [centerOnUserTrigger, setCenterOnUserTrigger] = useState(0)
 
-  // Initialize real GPS location
+  // Device orientation support - SIMPLIFIED VERSION
+  // Initialize real GPS location with unified compass handling
   useEffect(() => {
     let watchId: string | null = null
+    let fallbackInterval: NodeJS.Timeout | null = null
+    let isUsingGPSHeading = false
+
+    const handleOrientation = (event: DeviceOrientationEvent) => {
+      // Don't update if GPS is providing heading
+      if (isUsingGPSHeading) return
+
+      let heading: number | null = null
+
+      if ((event as any).webkitCompassHeading !== undefined) {
+        heading = (event as any).webkitCompassHeading
+      } else if (event.alpha !== null) {
+        heading = 360 - event.alpha
+      }
+
+      if (heading !== null) {
+        setUserLocation(prev => {
+          if (!prev) return null
+          // Larger deadband (5°) to reduce jitter
+          if (Math.abs(heading! - prev.heading) < 5) return prev
+          return { ...prev, heading }
+        })
+      }
+    }
 
     const startFallbackSimulation = () => {
       // Fall back to simulated location for development
@@ -115,10 +148,22 @@ export default function Home() {
           if (permission.location !== 'granted') {
             setLocationError('Location permission denied')
             // Fall back to simulated location
-            startFallbackSimulation()
+            fallbackInterval = startFallbackSimulation()
             return
           }
         }
+
+        // Request compass permission
+        if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+          try {
+            await (DeviceOrientationEvent as any).requestPermission()
+          } catch (e) {
+            console.warn('Compass permission denied')
+          }
+        }
+
+        // Attach compass listener
+        window.addEventListener('deviceorientation', handleOrientation)
 
         // Get initial position
         const position = await Geolocation.getCurrentPosition({
@@ -129,7 +174,7 @@ export default function Home() {
         setUserLocation({
           lat: position.coords.latitude,
           lng: position.coords.longitude,
-          heading: position.coords.heading || 0,
+          heading: (position.coords.heading !== null && position.coords.heading >= 0) ? position.coords.heading : -1,
         })
 
         // Watch position changes
@@ -143,24 +188,57 @@ export default function Home() {
                 original: err
               })
               // If watch fails, trigger fallback simulation if not already started
-              startFallbackSimulation()
+              fallbackInterval = startFallbackSimulation()
               return
             }
             if (position) {
-              setUserLocation({
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-                heading: position.coords.heading || 0,
-              })
+              const gpsHeading = position.coords.heading
+              const speed = position.coords.speed ?? 0
+
+              // Toggle compass based on speed
+              if (speed > 1 && gpsHeading !== null && gpsHeading >= 0) {
+                // We're moving with valid GPS heading - use GPS, ignore compass
+                isUsingGPSHeading = true
+                setUserLocation(prev => {
+                  const smoothed = smoothAngle(prev?.heading ?? -1, gpsHeading, 0.3) // Faster smoothing for GPS
+                  return {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                    heading: smoothed,
+                  }
+                })
+              } else {
+                // We're stationary - enable compass
+                isUsingGPSHeading = false
+                setUserLocation(prev => {
+                  return {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                    heading: prev?.heading ?? -1, // Keep current heading
+                  }
+                })
+              }
             }
           }
         )
       } catch (err) {
         console.error('Location error:', err)
-        const fallbackInterval = startFallbackSimulation()
-        return () => clearInterval(fallbackInterval)
+        fallbackInterval = startFallbackSimulation()
       }
     }
+
+    initLocation()
+
+    return () => {
+      if (watchId) {
+        Geolocation.clearWatch({ id: watchId })
+      }
+      if (fallbackInterval) {
+        clearInterval(fallbackInterval)
+      }
+      window.removeEventListener('deviceorientation', handleOrientation)
+    }
+  }, [])
 
     initLocation()
 
@@ -211,6 +289,18 @@ export default function Home() {
   const handleCenterOnUser = useCallback(async () => {
     triggerHaptic(ImpactStyle.Light)
 
+    // Request device orientation permission (iOS 13+)
+    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+      try {
+        const permissionState = await (DeviceOrientationEvent as any).requestPermission()
+        if (permissionState === 'granted') {
+          // Listener already attached in useEffect, but maybe re-attach or it just starts working
+        }
+      } catch (e) {
+        console.error('Orientation permission error:', e)
+      }
+    }
+
     // If we have location, just center
     if (userLocation) {
       setCenterOnUserTrigger(prev => prev + 1)
@@ -242,7 +332,9 @@ export default function Home() {
       setUserLocation({
         lat: position.coords.latitude,
         lng: position.coords.longitude,
-        heading: position.coords.heading || 0
+        heading: (position.coords.heading !== null && position.coords.heading >= 0)
+          ? position.coords.heading
+          : -1
       })
       setToastMessage('Found you!')
       setShowToast(true)

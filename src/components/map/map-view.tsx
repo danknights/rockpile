@@ -21,12 +21,38 @@ interface MapViewProps {
 
 export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, userLocation, centerOnUserTrigger }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = mapContainer.current
+    if (!el) return
+
+    const enableCompass = async () => {
+      if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+        try {
+          const res = await (DeviceOrientationEvent as any).requestPermission()
+          console.log('Compass permission:', res)
+        } catch (e) {
+          console.error(e)
+        }
+      }
+    }
+
+    el.addEventListener('touchstart', enableCompass, { once: true })
+    el.addEventListener('mousedown', enableCompass, { once: true })
+
+    return () => {
+      el.removeEventListener('touchstart', enableCompass)
+      el.removeEventListener('mousedown', enableCompass)
+    }
+  }, [])
+
   const map = useRef<maplibregl.Map | null>(null)
   const customLayerRef = useRef<any>(null)
   const userMarkerRef = useRef<maplibregl.Marker | null>(null)
   const routeLayerRef = useRef<string | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [mapError, setMapError] = useState<string | null>(null)
+  const prevCenterTriggerRef = useRef(0)
 
   const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY
 
@@ -388,7 +414,7 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
   }
 
   useEffect(() => {
-    if (!map.current || !userLocation) return
+    if (!map.current || !mapLoaded || !userLocation) return
 
     // Function to update or create marker
     const updateMarker = () => {
@@ -399,22 +425,29 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
         const el = userMarkerRef.current.getElement()
         const arrow = el.querySelector('.user-heading')
         if (arrow) {
-          (arrow as HTMLElement).style.transform = `rotate(${userLocation.heading}deg)`
+          if (userLocation.heading >= 0) {
+            (arrow as HTMLElement).style.display = 'block';
+            (arrow as HTMLElement).style.transform = `rotate(${userLocation.heading}deg)`;
+          } else {
+            (arrow as HTMLElement).style.display = 'none';
+          }
         }
       } else {
         const el = document.createElement('div')
+        const showHeading = userLocation.heading >= 0;
+
         // Simplified Chevron SVG for cleaner look
         el.innerHTML = `
               <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
                  <!-- Blue Dot -->
                  <div style="
                     position: absolute;
-                    width: 18px;
-                    height: 18px;
+                    width: 20px;
+                    height: 20px;
                     background: #3b82f6;
-                    border: 2px solid white;
+                    border: 3px solid white;
                     border-radius: 50%;
-                    box-shadow: 0 0 4px rgba(0,0,0,0.3);
+                    box-shadow: 0 0 6px rgba(0,0,0,0.3);
                     z-index: 10;
                  "></div>
 
@@ -424,11 +457,17 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
                     width: 100%;
                     height: 100%;
                     transform: rotate(${userLocation.heading}deg);
-                    transition: transform 0.2s linear;
+                    transition: transform 0.1s linear;
+                    z-index: 5;
+                    display: ${showHeading ? 'block' : 'none'};
                  ">
-                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
-                       <!-- This path describes a chevron shape pointing UP (negative Y) -->
-                       <path d="M 22 4 L 36 34 L 22 26 L 8 34 Z" fill="#3b82f6" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                   <!-- Chevron pointing UP (Away from center). 
+                        Center is 22,22. Dot radius ~10. Top of dot ~12.
+                        Chevron Base at Y=14 (under dot). Tip at Y=2.
+                        Width 16px (14 to 30).
+                   -->
+                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.2));">
+                       <path d="M 14 14 L 22 2 L 30 14 L 22 10 Z" fill="#3b82f6" stroke="white" stroke-width="2" stroke-linejoin="round"/>
                    </svg>
                  </div>
               </div>
@@ -453,12 +492,20 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
 
   // New effect for manual center trigger
   useEffect(() => {
-    console.log('DEBUG: centerOnUserTrigger changed:', centerOnUserTrigger)
-    console.log('DEBUG: Map available:', !!map.current)
-    console.log('DEBUG: User Location:', userLocation)
+    const hasNewTrigger = centerOnUserTrigger > prevCenterTriggerRef.current;
 
-    if (centerOnUserTrigger > 0 && map.current && userLocation) {
-      console.log('DEBUG: Flying to user location')
+    if (hasNewTrigger && centerOnUserTrigger > 0 && map.current && userLocation) {
+      console.log('DEBUG: Flying to user location', {
+        lng: userLocation.lng,
+        lat: userLocation.lat,
+        zoom: map.current.getZoom(),
+        canvasHeight: map.current.getCanvas().clientHeight,
+        canvasWidth: map.current.getCanvas().clientWidth
+      })
+
+      // Update ref so we don't fly again until trigger increments
+      prevCenterTriggerRef.current = centerOnUserTrigger;
+
       map.current.flyTo({
         center: [userLocation.lng, userLocation.lat],
         zoom: 16,
@@ -799,7 +846,20 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
     )
   }
 
+  const requestCompassPermission = async () => {
+    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+      try {
+        await (DeviceOrientationEvent as any).requestPermission()
+      } catch { }
+    }
+  }
+
   return (
-    <div ref={mapContainer} className="w-full h-full" />
+    <div
+      ref={mapContainer}
+      className="w-full h-full"
+      onTouchStart={requestCompassPermission}
+      onMouseDown={requestCompassPermission}
+    />
   )
 }
