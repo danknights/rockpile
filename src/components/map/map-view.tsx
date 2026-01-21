@@ -71,6 +71,7 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
     // Update filters for both layers
     try {
       const filterExpr = getMapFilterExpression()
+      console.log('DEBUG: Applying filter:', JSON.stringify(filterExpr))
       if (map.current.getLayer('boulders')) {
         map.current.setFilter('boulders', ['all', ['==', ['get', 'feature_type'], 'boulder'], ...filterExpr.slice(1)])
       }
@@ -144,8 +145,16 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
         map.current?.on('moveend', () => customLayerRef.current?.updateMeshes())
         map.current?.on('zoomend', () => customLayerRef.current?.updateMeshes())
         map.current?.on('sourcedata', (e) => {
-          if (e.sourceId === 'features' && e.isSourceLoaded) {
-            customLayerRef.current?.updateMeshes()
+          if (e.sourceId === 'features') {
+            if (e.isSourceLoaded) {
+              console.log('DEBUG: Features source loaded successfully')
+              customLayerRef.current?.updateMeshes()
+              map.current?.triggerRepaint()
+            }
+            // Check for specific error states if available in your MapLibre version, 
+            // but generally 'error' event handles it. 
+            // We can monitor tile loading state though:
+            // console.log('DEBUG: Source state:', map.current?.getSource('features'))
           }
         })
       })

@@ -46,6 +46,11 @@ const config: CapacitorConfig = {
     Haptics: {
       // Default haptic settings
     },
+
+    // HTTP Plugin to bypass CORS
+    CapacitorHttp: {
+      enabled: true,
+    },
   },
 };
 
