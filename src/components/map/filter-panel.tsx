@@ -22,6 +22,7 @@ import {
   chevronDownOutline,
 } from 'ionicons/icons'
 import type { MapFilter } from '@/lib/types'
+import { MAP_CONFIG } from '@/lib/map-config'
 
 interface FilterPanelProps {
   filter: MapFilter
@@ -142,7 +143,7 @@ export function FilterPanel({ filter, onFilterChange, isOpen, onToggle }: Filter
                 }}
                 slot="start"
               />
-              <div className="w-3 h-3 rounded-full bg-blue-500 ml-2 mr-2" />
+              <div className="w-3 h-3 rounded-full ml-2 mr-2" style={{ backgroundColor: MAP_CONFIG.colors.cliff }} />
               <IonLabel>Cliffs</IonLabel>
             </IonItem>
           </div>

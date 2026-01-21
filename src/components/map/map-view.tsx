@@ -9,6 +9,7 @@ import { mapOutline } from 'ionicons/icons'
 import { publicLands } from '@/lib/mock-data'
 import type { Feature, MapFilter } from '@/lib/types'
 import { createCustomLayer3D } from './layer-3d'
+import { MAP_CONFIG } from '@/lib/map-config'
 
 interface MapViewProps {
   onFeatureSelect: (feature: Feature) => void
@@ -67,6 +68,8 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
       maplibregl.removeProtocol('pmtiles')
     }
   }, [])
+
+
 
   // Construct Filter expression from MapFilter state
   const getMapFilterExpression = useCallback(() => {
@@ -127,8 +130,8 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
       map.current = new maplibregl.Map({
         container: mapContainer.current,
         style: showSatellite ? satelliteStyle : outdoorStyle,
-        center: [-91.68565, 47.78407],
-        zoom: 13,
+        center: MAP_CONFIG.initialCenter,
+        zoom: MAP_CONFIG.initialZoom,
         pitch: showSatellite ? 60 : 0,
         attributionControl: false,
         logoPosition: 'bottom-left',
@@ -232,7 +235,7 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
         type: 'fill',
         source: 'coverage',
         'source-layer': 'coverage',
-        paint: { 'fill-color': '#00cc00', 'fill-opacity': 0.15 }
+        paint: { 'fill-color': MAP_CONFIG.colors.scanned.fill, 'fill-opacity': 0.15 }
       })
     }
 
@@ -242,7 +245,7 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
         type: 'line',
         source: 'coverage',
         'source-layer': 'coverage',
-        paint: { 'line-color': '#009900', 'line-width': 1, 'line-opacity': 0.4 }
+        paint: { 'line-color': MAP_CONFIG.colors.scanned.outline, 'line-width': 1, 'line-opacity': 0.4 }
       })
     }
 
@@ -256,7 +259,7 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
         filter: ['==', ['get', 'feature_type'], 'boulder'],
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 12, 6, 16, 10, 18, 14],
-          'circle-color': '#ff6600',
+          'circle-color': MAP_CONFIG.colors.boulder,
           'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff',
           'circle-opacity': 1
@@ -284,7 +287,7 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
         filter: ['==', ['get', 'feature_type'], 'cliff'],
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 4, 12, 6, 16, 10, 18, 14],
-          'circle-color': '#0066ff',
+          'circle-color': MAP_CONFIG.colors.cliff,
           'circle-stroke-width': 2,
           'circle-stroke-color': '#ffffff',
           'circle-opacity': 1
@@ -477,12 +480,12 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
           .setLngLat([userLocation.lng, userLocation.lat])
           .addTo(map.current)
 
-        // Initial FlyTo
-        map.current.flyTo({
-          center: [userLocation.lng, userLocation.lat],
-          zoom: 15,
-          speed: 1.2
-        })
+        // Initial FlyTo DISABLED per user request (start zoomed out)
+        // map.current.flyTo({
+        //   center: [userLocation.lng, userLocation.lat],
+        //   zoom: 15,
+        //   speed: 1.2
+        // })
       }
     }
 
@@ -584,10 +587,10 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
   const clusterMarkersRef = useRef<{ [key: string]: maplibregl.Marker }>({})
 
   // SIZE CONFIGURATION
-  const CLUSTER_MIN_SIZE = 50      // Minimum donut size in pixels
-  const CLUSTER_MAX_SIZE = 90      // Maximum donut size in pixels
-  const CLUSTER_SIZE_SCALE = 3     // Pixels to add per feature
-  const CLUSTER_STROKE_WIDTH = 10  // Donut ring thickness
+  const CLUSTER_MIN_SIZE = MAP_CONFIG.clusters.minSize
+  const CLUSTER_MAX_SIZE = MAP_CONFIG.clusters.maxSize
+  const CLUSTER_SIZE_SCALE = MAP_CONFIG.clusters.sizeScale
+  const CLUSTER_STROKE_WIDTH = MAP_CONFIG.clusters.strokeWidth
 
   const createDonutChart = (boulders: number, cliffs: number, size: number) => {
     const total = boulders + cliffs
@@ -640,7 +643,7 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
     let currentAngle = 0
 
     if (boulders > 0 && boulders < total) {
-      svg.appendChild(createArc(currentAngle, currentAngle + boulderAngle, '#ff6600'))
+      svg.appendChild(createArc(currentAngle, currentAngle + boulderAngle, MAP_CONFIG.colors.boulder))
       currentAngle += boulderAngle
     } else if (boulders === total) {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
@@ -648,20 +651,20 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
       circle.setAttribute('cy', cy.toString())
       circle.setAttribute('r', arcRadius.toString())
       circle.setAttribute('fill', 'none')
-      circle.setAttribute('stroke', '#ff6600')
+      circle.setAttribute('stroke', MAP_CONFIG.colors.boulder)
       circle.setAttribute('stroke-width', CLUSTER_STROKE_WIDTH.toString())
       svg.appendChild(circle)
     }
 
     if (cliffs > 0 && cliffs < total) {
-      svg.appendChild(createArc(currentAngle, currentAngle + cliffAngle, '#0066ff'))
+      svg.appendChild(createArc(currentAngle, currentAngle + cliffAngle, MAP_CONFIG.colors.cliff))
     } else if (cliffs === total) {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
       circle.setAttribute('cx', cx.toString())
       circle.setAttribute('cy', cy.toString())
       circle.setAttribute('r', arcRadius.toString())
       circle.setAttribute('fill', 'none')
-      circle.setAttribute('stroke', '#0066ff')
+      circle.setAttribute('stroke', MAP_CONFIG.colors.cliff)
       circle.setAttribute('stroke-width', CLUSTER_STROKE_WIDTH.toString())
       svg.appendChild(circle)
     }
@@ -709,21 +712,21 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
     let boulderArc = '', cliffArc = ''
 
     if (boulders === total) {
-      boulderArc = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#ff6600" stroke-width="10"/>`
+      boulderArc = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${MAP_CONFIG.colors.boulder}" stroke-width="10"/>`
     } else if (cliffs === total) {
-      cliffArc = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#0066ff" stroke-width="10"/>`
+      cliffArc = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${MAP_CONFIG.colors.cliff}" stroke-width="10"/>`
     } else {
       if (boulders > 0) {
         const start = polarToCartesian(0)
         const end = polarToCartesian(boulderAngle)
         const largeArc = boulderAngle > 180 ? 1 : 0
-        boulderArc = `<path d="M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}" fill="none" stroke="#ff6600" stroke-width="10"/>`
+        boulderArc = `<path d="M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}" fill="none" stroke="${MAP_CONFIG.colors.boulder}" stroke-width="10"/>`
       }
       if (cliffs > 0) {
         const start = polarToCartesian(boulderAngle)
         const end = polarToCartesian(360)
         const largeArc = (360 - boulderAngle) > 180 ? 1 : 0
-        cliffArc = `<path d="M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}" fill="none" stroke="#0066ff" stroke-width="10"/>`
+        cliffArc = `<path d="M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}" fill="none" stroke="${MAP_CONFIG.colors.cliff}" stroke-width="10"/>`
       }
     }
 

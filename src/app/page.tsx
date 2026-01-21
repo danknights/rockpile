@@ -240,14 +240,7 @@ export default function Home() {
     }
   }, [])
 
-    initLocation()
 
-    return () => {
-      if (watchId) {
-        Geolocation.clearWatch({ id: watchId })
-      }
-    }
-  }, [])
 
   // Haptic feedback helper
   const triggerHaptic = useCallback(async (style: ImpactStyle = ImpactStyle.Light) => {
