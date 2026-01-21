@@ -453,10 +453,15 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
 
   // New effect for manual center trigger
   useEffect(() => {
+    console.log('DEBUG: centerOnUserTrigger changed:', centerOnUserTrigger)
+    console.log('DEBUG: Map available:', !!map.current)
+    console.log('DEBUG: User Location:', userLocation)
+
     if (centerOnUserTrigger > 0 && map.current && userLocation) {
+      console.log('DEBUG: Flying to user location')
       map.current.flyTo({
         center: [userLocation.lng, userLocation.lat],
-        zoom: 16, // Zoom in a bit more when manually locating
+        zoom: 16,
         speed: 1.5,
         padding: { top: 50, bottom: 50, left: 20, right: 20 }
       })
