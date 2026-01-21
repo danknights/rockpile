@@ -16,9 +16,10 @@ interface MapViewProps {
   showSatellite: boolean
   goToFeature: Feature | null
   userLocation: { lat: number; lng: number; heading: number } | null
+  centerOnUserTrigger: number
 }
 
-export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, userLocation }: MapViewProps) {
+export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, userLocation, centerOnUserTrigger }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
   const customLayerRef = useRef<any>(null)
@@ -389,45 +390,78 @@ export function MapView({ onFeatureSelect, filter, showSatellite, goToFeature, u
   useEffect(() => {
     if (!map.current || !userLocation) return
 
-    if (userMarkerRef.current) {
-      userMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat])
-      const el = userMarkerRef.current.getElement()
-      const arrow = el.querySelector('.user-heading')
-      if (arrow) {
-        (arrow as HTMLElement).style.transform = `rotate(${userLocation.heading}deg)`
-      }
-    } else {
-      const el = document.createElement('div')
-      el.innerHTML = `
-        <div style="position: relative;">
-          <div style="
-            width: 20px;
-            height: 20px;
-            background: #3b82f6;
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 2px 8px rgba(0,0,0,0.4);
-          "></div>
-          <div class="user-heading" style="
-            position: absolute;
-            top: -10px;
-            left: 50%;
-            transform: translateX(-50%) rotate(${userLocation.heading}deg);
-            transform-origin: center bottom;
-            width: 0;
-            height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-bottom: 12px solid #3b82f6;
-          "></div>
-        </div>
-      `
+    // Function to update or create marker
+    const updateMarker = () => {
+      if (!map.current || !userLocation) return
 
-      userMarkerRef.current = new maplibregl.Marker({ element: el })
-        .setLngLat([userLocation.lng, userLocation.lat])
-        .addTo(map.current)
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat])
+        const el = userMarkerRef.current.getElement()
+        const arrow = el.querySelector('.user-heading')
+        if (arrow) {
+          (arrow as HTMLElement).style.transform = `rotate(${userLocation.heading}deg)`
+        }
+      } else {
+        const el = document.createElement('div')
+        // Simplified Chevron SVG for cleaner look
+        el.innerHTML = `
+              <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+                 <!-- Blue Dot -->
+                 <div style="
+                    position: absolute;
+                    width: 18px;
+                    height: 18px;
+                    background: #3b82f6;
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 0 4px rgba(0,0,0,0.3);
+                    z-index: 10;
+                 "></div>
+
+                 <!-- Heading Chevron -->
+                 <div class="user-heading" style="
+                    position: absolute;
+                    width: 100%;
+                    height: 100%;
+                    transform: rotate(${userLocation.heading}deg);
+                    transition: transform 0.2s linear;
+                 ">
+                   <svg width="44" height="44" viewBox="0 0 44 44" fill="none" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">
+                       <!-- This path describes a chevron shape pointing UP (negative Y) -->
+                       <path d="M 22 4 L 36 34 L 22 26 L 8 34 Z" fill="#3b82f6" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+                   </svg>
+                 </div>
+              </div>
+            `
+
+        userMarkerRef.current = new maplibregl.Marker({ element: el })
+          .setLngLat([userLocation.lng, userLocation.lat])
+          .addTo(map.current)
+
+        // Initial FlyTo
+        map.current.flyTo({
+          center: [userLocation.lng, userLocation.lat],
+          zoom: 15,
+          speed: 1.2
+        })
+      }
     }
+
+    updateMarker()
+
   }, [userLocation])
+
+  // New effect for manual center trigger
+  useEffect(() => {
+    if (centerOnUserTrigger > 0 && map.current && userLocation) {
+      map.current.flyTo({
+        center: [userLocation.lng, userLocation.lat],
+        zoom: 16, // Zoom in a bit more when manually locating
+        speed: 1.5,
+        padding: { top: 50, bottom: 50, left: 20, right: 20 }
+      })
+    }
+  }, [centerOnUserTrigger, userLocation])
 
   useEffect(() => {
     if (!map.current || !mapLoaded || !goToFeature || !userLocation) return

@@ -85,6 +85,7 @@ export default function Home() {
   const [locationError, setLocationError] = useState<string | null>(null)
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
+  const [centerOnUserTrigger, setCenterOnUserTrigger] = useState(0)
 
   // Initialize real GPS location
   useEffect(() => {
@@ -207,10 +208,50 @@ export default function Home() {
     }, 3000)
   }, [triggerHaptic])
 
-  const handleCenterOnUser = useCallback(() => {
+  const handleCenterOnUser = useCallback(async () => {
     triggerHaptic(ImpactStyle.Light)
-    if (!userLocation) {
-      setToastMessage('Getting your location...')
+
+    // If we have location, just center
+    if (userLocation) {
+      setCenterOnUserTrigger(prev => prev + 1)
+      return
+    }
+
+    setToastMessage('Locating you...')
+    setShowToast(true)
+
+    try {
+      // Check permissions first
+      const permissionStatus = await Geolocation.checkPermissions()
+
+      if (permissionStatus.location !== 'granted') {
+        const requested = await Geolocation.requestPermissions()
+        if (requested.location !== 'granted') {
+          setToastMessage('Location permission denied.')
+          setShowToast(true)
+          return
+        }
+      }
+
+      // Get current position
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000
+      })
+
+      setUserLocation({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        heading: position.coords.heading || 0
+      })
+      setToastMessage('Found you!')
+      setShowToast(true)
+      // Also trigger center
+      setCenterOnUserTrigger(prev => prev + 1)
+
+    } catch (e) {
+      console.error('Manual location check failed:', e)
+      setToastMessage('Could not find location.')
       setShowToast(true)
     }
   }, [userLocation, triggerHaptic])
@@ -263,6 +304,7 @@ export default function Home() {
               showSatellite={showSatellite}
               goToFeature={goToFeature}
               userLocation={userLocation}
+              centerOnUserTrigger={centerOnUserTrigger}
             />
           </div>
 
